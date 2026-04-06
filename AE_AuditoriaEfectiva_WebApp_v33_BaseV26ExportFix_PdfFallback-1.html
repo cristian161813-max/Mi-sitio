@@ -1,0 +1,3593 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Auditoría Efectiva (AE) | Captura móvil + Dashboard</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0b1220;
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.72);
+      --line: rgba(255,255,255,.12);
+      --brand: #22c55e;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --shadow: 0 10px 30px rgba(0,0,0,.25);
+      --radius: 18px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(34,197,94,.25), transparent 60%),
+                  radial-gradient(900px 500px at 110% 20%, rgba(34,197,94,.18), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 14px 14px 90px; }
+    .topbar {
+      position: sticky; top: 0; z-index: 10;
+      padding: 10px 0;
+      backdrop-filter: blur(12px);
+      background: linear-gradient(to bottom, rgba(11,18,32,.92), rgba(11,18,32,.65));
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar-inner {
+      display:flex; gap:10px; align-items:center; justify-content:space-between;
+      max-width:1100px; margin:0 auto; padding:0 14px;
+    }
+    .brand { display:flex; align-items:center; gap:10px; min-width:0; }
+    .logo {
+      width:44px; height:44px; border-radius:14px;
+      background: linear-gradient(135deg, rgba(34,197,94,.95), rgba(34,197,94,.35));
+      box-shadow: var(--shadow);
+      display:grid; place-items:center;
+      overflow:hidden; flex:0 0 auto;
+    }
+    .logo img { width:100%; height:100%; object-fit:contain; padding:6px; }
+    .brand h1 { font-size:14px; margin:0; line-height:1.15; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .brand p { margin:0; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tabs { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .tabbtn {
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      padding:9px 11px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .tabbtn.active { background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.35); }
+
+    .grid { display:grid; gap:12px; grid-template-columns:1fr; margin-top:12px; }
+    @media (min-width:860px) {
+      .grid.cols2 { grid-template-columns:1.05fr .95fr; align-items:start; }
+      .grid.cols3 { grid-template-columns:1fr 1fr 1fr; }
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+    .card h2 { margin:0 0 10px; font-size:14px; letter-spacing:.2px; }
+    .sub { margin:-6px 0 10px; color:var(--muted); font-size:12px; line-height:1.35; }
+    .row { display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px; }
+    @media (min-width:720px) {
+      .row.cols2 { grid-template-columns:1fr 1fr; }
+      .row.cols3 { grid-template-columns:1fr 1fr 1fr; }
+      .row.cols4 { grid-template-columns:1fr 1fr 1fr 1fr; }
+    }
+    label { display:grid; gap:6px; font-size:12px; color:var(--muted); }
+    input, select, textarea {
+      width:100%;
+      padding:11px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      outline:none;
+      font-size:14px;
+    }
+    input[disabled], select[disabled], textarea[disabled] { opacity:.75; cursor:not-allowed; }
+    textarea { min-height:92px; resize:vertical; }
+    .hint { font-size:11px; color: rgba(255,255,255,.62); margin-top:6px; }
+    .btnbar { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .btn {
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      padding:10px 12px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:800;
+      font-size:12px;
+    }
+    .btn.primary { background: rgba(34,197,94,.20); border-color: rgba(34,197,94,.35); }
+    .btn.danger { background: rgba(239,68,68,.16); border-color: rgba(239,68,68,.35); }
+    .btn.ghost { background: transparent; }
+    .kpis { display:grid; gap:10px; grid-template-columns:1fr 1fr; }
+    @media (min-width:860px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
+    .kpi { background: rgba(255,255,255,.04); border:1px solid var(--line); border-radius:16px; padding:12px; }
+    .kpi .v { font-size:18px; font-weight:900; letter-spacing:.2px; }
+    .kpi .l { font-size:11px; color: var(--muted); margin-top:4px; }
+
+    .table { width:100%; border-collapse:collapse; overflow:hidden; border-radius:16px; }
+    .table th, .table td { border-bottom: 1px solid rgba(255,255,255,.10); padding:10px 10px; font-size:12px; vertical-align:top; }
+    .table th { text-align:left; font-size:11px; color: rgba(255,255,255,.7); background: rgba(255,255,255,.03); position:sticky; top:0; }
+    .pill {
+      display:inline-flex; gap:6px; align-items:center;
+      padding:4px 8px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      font-size:11px; white-space:nowrap;
+    }
+    .pill.green { border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.15); }
+    .pill.red { border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.15); }
+    .pill.amber { border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.18); }
+
+    .hr { height:1px; background: var(--line); margin:12px 0; }
+    .small { font-size:12px; color: var(--muted); }
+    .mono { font-family: var(--mono); }
+    .hide { display:none !important; }
+
+    .footer-fixed {
+      position: fixed; bottom:0; left:0; right:0;
+      background: linear-gradient(to top, rgba(11,18,32,.95), rgba(11,18,32,.68));
+      border-top: 1px solid var(--line);
+      padding: 10px 14px;
+      z-index: 20;
+    }
+    .footer-fixed .inner {
+      max-width: 1100px; margin: 0 auto;
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    }
+    .toast {
+      position: fixed; left:14px; right:14px; bottom:78px;
+      max-width: 1100px; margin:0 auto;
+      pointer-events:none;
+      z-index: 30;
+    }
+    .toast .msg {
+      pointer-events:all;
+      display:inline-flex; gap:10px; align-items:center;
+      padding:10px 12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.45);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      font-size: 12px;
+    }
+
+    .recon {
+      display:grid; gap:10px;
+      padding:12px;
+      border-radius:16px;
+      border:1px dashed rgba(34,197,94,.35);
+      background: rgba(34,197,94,.07);
+    }
+    .recon img {
+      width:100%;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.15);
+    }
+  
+    /* Mejor visibilidad en listas desplegables (cuando el navegador lo permite) */
+    select {
+      color: rgba(34,197,94,.98);
+    }
+    option, optgroup {
+      background-color: #0b1220;
+      color: rgba(34,197,94,.98);
+    }
+    select:focus {
+      border-color: rgba(34,197,94,.55);
+      box-shadow: 0 0 0 3px rgba(34,197,94,.12);
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="logo" id="logoBox" title="Logo">
+          <span style="font-weight:900; font-size:11px; letter-spacing:.8px;">M</span>
+        </div>
+        <div style="min-width:0">
+          <h1>Auditoría Efectiva (AE) — Captura móvil + Dashboard</h1>
+          <p id="statusLine">Base local: <span class="mono" id="dbCount">0</span> registros</p>
+        </div>
+      </div>
+      <div class="tabs">
+        <button class="tabbtn active" data-tab="captura">Captura</button>
+        <button class="tabbtn" data-tab="registros">Registros</button>
+        <button class="tabbtn" data-tab="dashboard">Dashboard</button>
+        <button class="tabbtn" data-tab="admin">Administrador</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <section id="tab-captura">
+      <div class="grid cols2">
+        <div class="card">
+          <h2>Captura de Auditoría Efectiva (AE)</h2>
+          <div class="small">1) Encabezado de auditoría</div>
+          <p class="sub">La <b>fecha/hora de registro</b> se capturan automáticamente (no editables).</p>
+
+          <div class="row cols2">
+            <label>Planta auditada
+              <select id="planta"></select>
+            </label>
+            <label>Área auditada
+              <select id="area"></select>
+            </label>
+          </div>
+
+          <div class="row cols3">
+            <label>Fecha auditoría
+              <input id="fechaAuditoria" type="date" />
+            </label>
+            <label>Fecha registro (automática)
+              <input id="fechaRegistro" type="date" disabled />
+            </label>
+            <label>Tipo de recorrido (AE)
+              <select id="tipoRecorrido">
+                <option value="Ordinario">Ordinario</option>
+                <option value="Extraordinario">Extraordinario</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="row cols3">
+            <label>Hora inicio
+              <input id="horaInicio" type="time" />
+            </label>
+            <label>Hora término
+              <input id="horaTermino" type="time" />
+            </label>
+            <label>Hora de registro (automática)
+              <input id="horaRegistro" type="text" disabled />
+            </label>
+          </div>
+
+          <div class="row cols2">
+            <label>Auditor Líder
+              <select id="auditorLider"></select>
+              <div class="hint">Se autocompleta puesto y tipo AE.</div>
+            </label>
+            <label>Auditor de acompañamiento
+              <select id="auditorAcomp"></select>
+            </label>
+          </div>
+
+          <div class="row cols3">
+            <label>Puesto auditor líder
+              <input id="puestoLider" type="text" placeholder="Autocompletado" />
+            </label>
+            <label>Gerencia (auditor líder)
+              <input id="gerenciaLider" type="text" placeholder="Autocompletado" disabled />
+              <div class="hint">Se autocompleta según el auditor líder.</div>
+            </label>
+            <label>Tipo AE (auditor líder)
+              <input id="tipoAELider" type="text" placeholder="Autocompletado" />
+            </label>
+          </div>
+
+          <div class="row cols2">
+            <label>Puesto auditor acompañante
+              <input id="puestoAcomp" type="text" placeholder="Autocompletado" />
+            </label>
+            <label>Tipo AE (acompañante)
+              <input id="tipoAEAcomp" type="text" placeholder="Autocompletado" />
+            </label>
+          </div>
+
+          <div class="row cols2">
+            <label>IAS (Actos seguros / total) — auditoría actual
+              <input id="iasEncabezado" type="text" disabled value="—" />
+            </label>
+            <label>Registros capturados (auditoría actual)
+              <input id="countEncabezado" type="text" disabled value="0" />
+            </label>
+          </div>
+
+
+          <div class="btnbar">
+            <button class="btn primary" id="guardarEncabezado">Guardar encabezado</button>
+                      </div>
+        
+
+          <div class="hr"></div>
+
+          <h2>2) Registro de actos / observaciones</h2>
+          <p class="sub">Actos seguros (1) permiten adjuntar foto y generar reconocimiento para compartir por WhatsApp.</p>
+
+          <div class="row cols3">
+            <label>Tipo de observación
+              <select id="tipoObs">
+                <option value="Seguridad">Seguridad</option>
+                <option value="Gerencial">Gerencial</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="Calidad">Calidad</option>
+                <option value="Área">Área</option>
+              </select>
+            </label>
+            <label>Tipo de registro
+              <select id="tipoRegistro">
+                <option value="1">1 — Reforzamiento positivo (acto seguro)</option>
+                <option value="2">2 — Observación insegura</option>
+              </select>
+            </label>
+            <label>Factor de severidad (FS)
+              <select id="fs">
+                <option value="">(No aplica / sin dato)</option>
+                <option value="1">1 — Bajo</option>
+                <option value="2">2 — Medio</option>
+                <option value="3">3 — Alto</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="row cols2">
+            <label>Nombre de la persona abordada
+              <input id="nombre" type="text" placeholder="Nombre" />
+            </label>
+            <label>Área a la que pertenece
+              <select id="areaPersona"></select>
+            </label>
+          </div>
+
+          <div class="row cols3">
+            <label>Tipo de personal
+              <select id="tipoPersonal">
+                <option value="Interno">Interno (Compañía)</option>
+                <option value="Externo">Externo (Contratista/Proveedor)</option>
+              </select>
+            </label>
+            <label>Puesto (interno)
+              <input id="puestoInterno" type="text" placeholder="Puesto" />
+            </label>
+            <label>Puesto (externo)
+              <input id="puestoExterno" type="text" placeholder="Puesto" />
+            </label>
+          </div>
+
+          <div class="row cols2">
+            <label>Nombre de la empresa (si externo)
+              <input id="empresa" type="text" placeholder="Empresa" />
+            </label>
+            <label id="lblActo">Acto seguro observado / Acto inseguro observado
+              <textarea id="acto" placeholder="Describe el acto seguro o el acto/condición insegura"></textarea>
+            </label>
+          </div>
+
+          <div class="recon" id="reconBox" style="display:none;">
+            <div class="small"><b>Reconocimiento (solo acto seguro)</b> — adjunta foto desde cámara o galería.</div>
+            <input id="fotoRecon" type="file" accept="image/*" capture="environment" />
+            <img id="fotoPreview" alt="Vista previa (original)" style="display:none;" />
+            <img id="fotoPreviewMarco" alt="Vista previa (con marco)" style="display:none; margin-top:10px;" />
+            <div class="btnbar" style="margin-top:0;">
+              <button class="btn" id="cambiarFotoRecon" type="button" style="display:none;">Cambiar foto</button>
+              <button class="btn" id="generarRecon" type="button">Generar marco “Gracias…”</button>
+              <button class="btn primary" id="compartirRecon" type="button" disabled>Compartir (WhatsApp)</button>
+              <button class="btn" id="descargarRecon" type="button" disabled>Descargar imagen</button>
+            </div>
+            <div class="small" id="reconHint">Después de generar, podrás compartir el reconocimiento.</div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="row cols2">
+            <label>Categoría primaria (solo para observación insegura)
+              <select id="catPrim"></select>
+            </label>
+            <label>Categoría secundaria
+              <select id="catSec"></select>
+            </label>
+          </div>
+
+          <div class="row cols2">
+            <label>Causa primaria (solo para observación insegura)
+              <select id="causaPrim"></select>
+            </label>
+            <label>Causa secundaria
+              <select id="causaSec"></select>
+            </label>
+          </div>
+
+          <div class="row cols2">
+            <label>No. de personas observadas (automático)
+              <input id="nPersonas" type="number" min="1" step="1" value="1" disabled />
+            </label>
+            <label>Observaciones adicionales
+              <textarea id="obsAdicional" placeholder="Notas / evidencia / acciones sugeridas"></textarea>
+            </label>
+          </div>
+
+          <div class="btnbar">
+            <button class="btn primary" id="agregarRegistro">Seguir registrando</button>
+            <button class="btn" id="finalizarAuditoria" type="button">Finalizar auditoría</button>
+            <button class="btn" id="limpiarRegistro">Limpiar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-registros" class="hide">
+      <div class="card">
+        <h2>Registros capturados</h2>
+        <p class="sub">Filtra, edita y elimina. El JSON exporta también fotos (si existen).</p>
+
+        <div class="row cols4">
+          <label>Planta
+            <select id="fPlanta"></select>
+          </label>
+          <label>Área
+            <select id="fArea"></select>
+          </label>
+          <label>Auditor líder
+            <select id="fAuditor"></select>
+          </label>
+          <label>Tipo
+            <select id="fTipo">
+              <option value="">(Todos)</option>
+              <option value="1">1 — Acto seguro</option>
+              <option value="2">2 — Inseguro</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row cols4">
+          <label>Área persona
+            <select id="fAreaPersona"></select>
+          </label>
+          <label>Tipo de observación
+            <select id="fTipoObs">
+              <option value="">(Todos)</option>
+              <option value="Seguridad">Seguridad</option>
+              <option value="Gerencial">Gerencial</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Calidad">Calidad</option>
+              <option value="Área">Área</option>
+            </select>
+          </label>
+          <label>Desde
+            <input id="fDesde" type="date" />
+          </label>
+          <label>Hasta
+            <input id="fHasta" type="date" />
+          </label>
+          <label>Buscar (texto)
+            <input id="fQ" type="text" placeholder="Nombre, acto, categoría, causa..." />
+          </label>
+        </div>
+
+        <div class="btnbar">
+          <button class="btn" id="aplicarFiltros">Aplicar filtros</button>
+          <button class="btn ghost" id="limpiarFiltros">Limpiar filtros</button>
+        </div>
+
+        <div class="hr"></div>
+
+        <div style="overflow:auto; max-height: 60vh;">
+          <table class="table" id="tablaReg">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="btnbar">
+          <button class="btn primary" id="exportXlsx">Exportar Excel (XLSX)</button>
+          <button class="btn" id="exportJson">Exportar JSON (incluye fotos)</button>
+        </div>
+
+        <div class="row cols2" style="margin-top:10px;">
+          <label>Auditoría para PDF (Audit ID)
+            <select id="pdfAuditSelect"></select>
+          </label>
+          <label>&nbsp;
+            <button class="btn" id="exportAuditPdf">Exportar AE en PDF (incluye foto)</button>
+          </label>
+        </div>
+        <div class="hint">Exporta una auditoría completa (encabezado + registros) y agrega la(s) foto(s) de reconocimiento cuando existan.</div>
+
+        <div class="hr"></div>
+        <h2>Importar auditoría (Excel/JSON)</h2>
+        <p class="sub">Carga el Excel exportado por otra persona. Se integrará a la base local y aparecerá aquí mismo.</p>
+        <div class="row cols2" style="margin-top:0;">
+          <label>Importar Excel (XLSX)
+            <input id="regImportXlsx" type="file" accept=".xlsx,.xls" />
+          </label>
+          <label>Importar JSON (AE)
+            <input id="regImportJson" type="file" accept=".json" />
+            <button class="btn primary" id="btnRegImportJsonLoad" type="button" style="margin-top:8px;">Cargar</button>
+            <div class="hint" id="regImportJsonStatus">Selecciona un archivo <span class="mono">AE-YYYY_YYYY-MM-DD_AUDITOR_PLANTA.json</span> y pulsa <b>Cargar</b>.</div>
+          </label>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="tab-dashboard" class="hide">
+      <div class="card">
+        <h2>Dashboard</h2>
+        <p class="sub">Indicadores basados en los registros filtrados. Incluye filtro por <b>Tipo de observación</b> y comparación <b>Seguridad vs otras áreas</b>.</p>
+
+        <div class="row cols3">
+          <label>Filtro: Tipo de observación
+            <select id="dTipoObs">
+              <option value="">(Todos)</option>
+              <option value="Seguridad">Seguridad</option>
+              <option value="Gerencial">Gerencial</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Calidad">Calidad</option>
+              <option value="Área">Área</option>
+            </select>
+          </label>
+          <label>Comparar Seguridad vs
+            <select id="cmpOther">
+              <option value="__ALL_OTHERS__">Todas (excepto Seguridad)</option>
+              <option value="Gerencial">Gerencial</option>
+              <option value="Mantenimiento">Mantenimiento</option>
+              <option value="Calidad">Calidad</option>
+              <option value="Área">Área</option>
+            </select>
+          </label>
+          <label>&nbsp;
+            <button class="btn primary" id="applyDashFilters" type="button">Aplicar al dashboard</button>
+          </label>
+        </div>
+
+        <div class="grid cols2" style="margin-top:12px;">
+          <div class="card" style="padding:12px;">
+            <h2 style="margin-bottom:6px;">Comparativo: Seguridad vs seleccionado</h2>
+            <canvas id="chCompare"></canvas>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <h2 style="margin-bottom:6px;">Comparar auditores (Auditor vs Auditor)</h2>
+          <p class="sub">Selecciona dos auditores para comparar su conteo de registros e IAS. Respeta filtros del dashboard.</p>
+
+          <div class="row cols2" style="margin-top:0;">
+            <label>Auditor A
+              <select id="cmpAud1"></select>
+            </label>
+            <label>Auditor B
+              <select id="cmpAud2"></select>
+            </label>
+          </div>
+
+          <div class="btnbar" style="margin-top:10px;">
+            <button class="btn primary" id="applyAudVsAud" type="button">Comparar</button>
+          </div>
+
+          <div class="grid cols2" style="margin-top:12px;">
+            <div class="card" style="padding:12px;">
+              <h2 style="margin-bottom:6px;">Conteo de registros</h2>
+              <canvas id="chAudVsCount"></canvas>
+            </div>
+            <div class="card" style="padding:12px;">
+              <h2 style="margin-bottom:6px;">IAS %</h2>
+              <canvas id="chAudVsIAS"></canvas>
+            </div>
+          </div>
+        </div>
+<div class="kpis">
+          <div class="kpi"><div class="v mono" id="kTotal">0</div><div class="l">Registros (filtrados)</div></div>
+          <div class="kpi"><div class="v mono" id="kSeguros">0</div><div class="l">Actos seguros</div></div>
+          <div class="kpi"><div class="v mono" id="kInseguros">0</div><div class="l">Observaciones inseguras</div></div>
+          <div class="kpi"><div class="v mono" id="kFS3">0</div><div class="l">FS Alto (3)</div></div>
+        <div class="kpi"><div class="v mono" id="kIAS">0%</div><div class="l">IAS (Actos seguros / total)</div></div>
+        </div>
+
+        <div class="grid cols3" style="margin-top:12px;">
+          <div class="card" style="padding:12px;">
+            <h2 style="margin-bottom:6px;">FS</h2>
+            <canvas id="chFS"></canvas>
+          </div>
+          <div class="card" style="padding:12px;">
+            <h2 style="margin-bottom:6px;">Top categorías primarias</h2>
+            <canvas id="chCat"></canvas>
+          </div>
+          <div class="card" style="padding:12px;">
+            <h2 style="margin-bottom:6px;">Top causas primarias</h2>
+            <canvas id="chCausa"></canvas>
+          </div>
+        </div>
+
+        <div class="grid cols2" style="margin-top:12px;">
+          <div class="card" style="padding:12px;">
+            <h2 style="margin-bottom:6px;">Registros por planta</h2>
+            <canvas id="chPlanta"></canvas>
+          </div>
+          <div class="card" style="padding:12px;">
+            <h2 style="margin-bottom:6px;">Registros por auditor líder</h2>
+            <canvas id="chAuditor"></canvas>
+          </div>
+        </div>
+
+        
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <h2 style="margin-bottom:6px;">IAS por planta (semana / mes)</h2>
+          <p class="sub">Selecciona un periodo y el tipo de cálculo para ver el <b>IAS</b> por planta. Usa <b>IAS acumulado</b> para (actos seguros/total) y <b>IAS promedio</b> para promedio por auditoría.</p>
+
+          <div class="row cols3" style="margin-top:0;">
+            <label>Periodo
+              <select id="iasPeriodMode">
+                <option value="week">Semana</option>
+                <option value="month" selected>Mes</option>
+              </select>
+            </label>
+            <label id="wrapIasWeek" class="hide">Semana
+              <input id="iasWeek" type="week" />
+            </label>
+            <label id="wrapIasMonth">Mes
+              <input id="iasMonth" type="month" />
+            </label>
+          </div>
+
+          <div class="row cols3" style="margin-top:0;">
+            <label>Tipo de cálculo
+              <select id="iasAggMode">
+                <option value="cumulative" selected>IAS acumulado (actos seguros / total)</option>
+                <option value="average">IAS promedio (promedio por auditoría)</option>
+              </select>
+            </label>
+            <label>Resumen
+              <input id="iasPeriodSummary" type="text" disabled value="" />
+            </label>
+            <label>&nbsp;
+              <button class="btn" id="btnIasRefresh" type="button">Actualizar</button>
+            </label>
+          </div>
+
+          <canvas id="chIASPlantPeriod"></canvas>
+        </div>
+<div class="card" style="padding:12px; margin-top:12px;">
+          <h2 style="margin-bottom:6px;">Hallazgos por área (persona abordada)</h2>
+          <p class="sub">Distribución por el campo <b>Área a la que pertenece</b> (solo observación insegura).</p>
+          <canvas id="chAreaPersona"></canvas>
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <h2 style="margin-bottom:6px;">Comentarios de auditores</h2>
+          <p class="sub">Se muestran los comentarios capturados en <b>Observaciones adicionales</b>. Respeta filtros del dashboard.</p>
+          <div style="overflow:auto; max-height: 45vh;">
+            <table class="table" id="tablaComentarios">
+              <thead>
+                <tr>
+                  <th>FECHA</th><th>PLANTA</th><th>ÁREA</th><th>AUDITOR</th><th>TIPO</th><th>COMENTARIO</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-admin" class="hide">
+      <div class="grid cols2">
+        <div class="card">
+          <h2>Administrador (protegido)</h2>
+          <p class="sub">Contraseña: <span class="mono">2025</span> (por sesión). Aquí puedes inhabilitar catálogos.</p>
+
+                    <div class="row cols2">
+            <label>Importar Excel (XLSX)
+              <input id="importXlsx" type="file" accept=".xlsx,.xls" />
+            </label>
+            <label>Importar respaldo completo (JSON)
+              <input id="importJson" type="file" accept=".json" />
+              <div class="hint">Usa el respaldo descargado desde <b>“Descargar respaldo (JSON)”</b> (si está habilitado).</div>
+            </label>
+          </div>
+
+          <div class="row cols2">
+            <label>Importar AE (JSON de auditoría)
+              <button class="btn primary" id="btnImportAuditJson" type="button">Cargar JSON de AE</button>
+              <input id="importAuditJson" type="file" accept=".json" style="display:none;" />
+              <div class="hint">Selecciona el archivo generado al <b>Finalizar auditoría</b>: <span class="mono">AE-YYYY_YYYY-MM-DD_AUDITOR_PLANTA.json</span></div>
+            </label>
+            <label>Estado de importación
+              <input id="importAuditStatus" type="text" disabled value="Sin importar" />
+            </label>
+          </div>
+
+          <div class="row cols2">
+            <label>Logo (PNG/JPG) — se guarda en el dispositivo
+              <input id="importLogo" type="file" accept="image/png,image/jpeg" />
+            </label>
+            <label>Respaldo completo
+              <button class="btn" id="backupJson">Descargar respaldo (JSON)</button>
+            </label>
+          </div>
+
+          <div class="hr"></div>
+          <div class="btnbar">
+            <button class="btn danger" id="borrarBase">Borrar TODA la base local</button>
+          </div>
+
+          <div class="hr"></div>
+          <h2 style="margin-top:0;">Catálogos (inhabilitar)</h2>
+
+          <div class="row cols3">
+            <div class="card" style="padding:12px;">
+              <h2 style="margin-bottom:6px;">Plantas</h2>
+              <div id="adminPlantas" style="margin-top:8px; max-height: 220px; overflow:auto;"></div>
+            </div>
+            <div class="card" style="padding:12px;">
+              <h2 style="margin-bottom:6px;">Áreas</h2>
+              <div id="adminAreas" style="margin-top:8px; max-height: 220px; overflow:auto;"></div>
+            </div>
+
+            <div class="card" style="padding:12px;">
+              <h2 style="margin-bottom:6px;">Áreas (persona abordada)</h2>
+              <div class="row cols2" style="margin-top:0;">
+                <label>Nueva área
+                  <input id="newAreaPersona" type="text" placeholder="Ej. Logística / RH / Producción" />
+                </label>
+                <label>&nbsp;
+                  <button class="btn primary" id="addAreaPersona" type="button">Agregar</button>
+                </label>
+              </div>
+              <div class="small">Editar nombre: toca el texto. Eliminar: 🗑️</div>
+              <div id="editAreasPersona" style="margin-top:10px; max-height: 240px; overflow:auto;"></div>
+            </div>
+
+          </div>
+
+          <div class="card" style="padding:12px; margin-top:12px;">
+            <h2 style="margin-bottom:6px;">Auditores</h2>
+            <div id="adminAuditores" style="margin-top:8px; max-height: 240px; overflow:auto;"></div>
+          </div>
+
+          
+          <div class="hr"></div>
+          <h2 style="margin-top:0;">Editar catálogos (alta/baja/edición)</h2>
+          <p class="sub">Estos cambios se guardan en este dispositivo. (Opcional) Exporta/importa el catálogo en JSON para replicarlo en otros equipos.</p>
+
+          <div class="row cols2">
+            <div class="card" style="padding:12px;">
+              <h2 style="margin-bottom:6px;">Plantas</h2>
+              <div class="row cols2" style="margin-top:0;">
+                <label>Nueva planta
+                  <input id="newPlanta" type="text" placeholder="Nombre de planta" />
+                </label>
+                <label>&nbsp;
+                  <button class="btn primary" id="addPlanta" type="button">Agregar</button>
+                </label>
+              </div>
+              <div class="small">Editar nombre: toca el texto. Eliminar: 🗑️</div>
+              <div id="editPlantas" style="margin-top:10px; max-height: 240px; overflow:auto;"></div>
+            </div>
+
+            <div class="card" style="padding:12px;">
+              <h2 style="margin-bottom:6px;">Áreas</h2>
+              <div class="row cols2" style="margin-top:0;">
+                <label>Nueva área
+                  <input id="newArea" type="text" placeholder="Nombre de área" />
+                </label>
+                <label>&nbsp;
+                  <button class="btn primary" id="addArea" type="button">Agregar</button>
+                </label>
+              </div>
+              <div class="small">Editar nombre: toca el texto. Eliminar: 🗑️</div>
+              <div id="editAreas" style="margin-top:10px; max-height: 240px; overflow:auto;"></div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:12px; margin-top:12px;">
+            <h2 style="margin-bottom:6px;">Auditores</h2>
+            <div class="row cols4" style="margin-top:0;">
+              <label>Nombre
+                <input id="newAudName" type="text" placeholder="Nombre completo" />
+              </label>
+              <label>Tipo AE
+                <input id="newAudTipo" type="text" placeholder="Ej. Lider / Acomp." />
+              </label>
+              <label>Área
+                <input id="newAudArea" type="text" placeholder="Área" />
+              </label>
+              <label>Puesto
+                <input id="newAudPuesto" type="text" placeholder="Puesto" />
+              </label>
+            </div>
+            <div class="btnbar" style="margin-top:8px;">
+              <button class="btn primary" id="addAuditor" type="button">Agregar auditor</button>
+            </div>
+            <div class="small">Editar directo en la tabla. Eliminar: 🗑️</div>
+            <div id="editAuditores" style="margin-top:10px; max-height: 280px; overflow:auto;"></div>
+          </div>
+
+          <div class="btnbar">
+            <button class="btn" id="exportCatalogJson" type="button">Exportar catálogo JSON</button>
+            <label class="btn" style="display:inline-flex; align-items:center; gap:8px;">
+              Importar catálogo JSON
+              <input id="importCatalogJson" type="file" accept=".json" style="display:none;" />
+            </label>
+            <button class="btn danger" id="resetCatalogos" type="button">Restablecer catálogos (originales)</button>
+          </div>
+
+<div class="btnbar">
+            <button class="btn primary" id="guardarCatalogos">Guardar cambios de catálogos</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Columnas Excel</h2>
+          <p class="sub">Excel exportado conserva las columnas originales del XLSM. Las fotos van en JSON.</p>
+          <div style="overflow:auto; max-height: 55vh;">
+            <ol class="small" id="colsList" style="margin:0; padding-left: 18px;"></ol>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="toast" id="toast" style="display:none;">
+    <div class="msg" id="toastMsg"></div>
+  </div>
+
+  <div class="footer-fixed">
+    <div class="inner">
+      <div class="small">
+        <span class="pill green">AE</span>
+        <span class="pill">LocalStorage</span>
+        <span class="pill" id="pillSaved">Encabezado: <b>No</b></span>
+      </div>
+      <div class="small mono" id="nowLine"></div>
+    </div>
+  </div>
+
+  <canvas id="reconCanvas" class="hide"></canvas>
+
+<script>
+
+/* ========= DATOS ========= */
+var CATALOG_RAW = {"plants": ["PLANTA TOLUCA", "PLANTA LEÓN II", "PLANTA TULTEPEC", "PLANTA TEOLOYUCAN II", "PLANTA QRO AEROPUERTO", "PLANTA ZAPOPAN II", "PLANTA ALTAMIRA", "PLANTA ATIZAPAN", "PLANTA BALVANERA", "PLANTA CENTRAL", "PLANTA COACALCO", "PLANTA CUAUTLA", "PLANTA EULALIA GUZMAN", "PLANTA HUIXQUILUCAN II", "PLANTA IRAPUATO", "PLANTA IZTAPALAPA", "PLANTA LEON", "PLANTA LERMA", "PLANTA LOS REYES", "PLANTA NAUCALPAN", "PLANTA PUEBLA", "PLANTA QUERETARO", "PLANTA SAN AGUSTIN", "PLANTA TEHUACAN", "PLANTA TEOLOYUCAN", "PLANTA TEPETZINGO", "PLANTA TLAQUEPAQUE", "PLANTA VALLEJO", "PLANTA VERACRUZ", "PLANTA VERACRUZ API", "PLANTA XALOSTOC", "PLANTA XOCHIMILCO", "PLANTA ZAPOPAN"], "areas": ["ÁREA DE BOMBEO", "ÁREA DE CALIDAD", "ÁREA DE COMERCIAL", "ÁREA DE MANTENIMIENTO", "ÁREA DE PRODUCCIÓN", "ÁREA DE SEGURIDAD", "OBRA", "TRAYECTO A OBRA/CLIENTE"], "auditors": [{"name": "MARIA GUADALUPE GARDUÑO MENDINO", "tipo": "HSE", "area": "SEGURIDAD", "puesto": "Supervisor de Seguridad y Medio Ambiente"}, {"name": "LUIS RICARDO GONZALEZ PEREZ", "tipo": "HSE", "area": "SEGURIDAD", "puesto": "Supervisor de Seguridad y Medio Ambiente"}, {"name": "MANUEL RIVERA GUTIÉRREZ", "tipo": "DIRECCIÓN", "area": "DIRECCIÓN", "puesto": "Director de Concretos"}, {"name": "CARLOS MAURILIO CARMONA FLORES", "tipo": "GERENCIAL", "area": "CALIDAD", "puesto": "Gerente de Control de Calidad"}, {"name": "HUGO EFRAÍN MOJICA MUÑOZ", "tipo": "JEFATURA", "area": "CALIDAD", "puesto": "Jefe de Control de Calidad - Bajío-Pacífico"}, {"name": "PABLO DE JESÚS OCHOA SÁNCHEZ", "tipo": "JEFATURA", "area": "CALIDAD", "puesto": "Jefe de Calidad Agregados y Minas -País"}, {"name": "RAÚL ALBERTO CABALLERO ROSETE", "tipo": "JEFATURA", "area": "CALIDAD", "puesto": "Jefe de Control de Calidad - Centro-Sur"}, {"name": "FERNANDO BONILLA CONTRERAS", "tipo": "GERENCIAL", "area": "COMERCIAL", "puesto": "Gerente Comercial Pacifico-Bajío"}, {"name": "FRANCISCO CARLOS RUIZ CRUZ", "tipo": "GERENCIAL", "area": "COMERCIAL", "puesto": "Gerente Comercial Centro- Sur"}, {"name": "JOSÉ RICARDO BRAVO VALERO", "tipo": "GERENCIAL", "area": "COMERCIAL", "puesto": "Gerente Comercial Institucionales"}, {"name": "AARÓN DEL ANGEL SOSA", "tipo": "SUPERVISIÓN", "area": "MANTENIMIENTO", "puesto": "Supervisior de Plantas"}, {"name": "EDUARDO GARCÍA ROSAS", "tipo": "GERENCIAL", "area": "MANTENIMIENTO", "puesto": "Gerente de Mantenimiento y Gestión de Activos"}, {"name": "LUIS ANTONIO BARRIENTOS PINTO", "tipo": "JEFATURA", "area": "MANTENIMIENTO", "puesto": "Jefe de Mantenimiento"}, {"name": "DIEGO YAIR GALLARDO HUERTA", "tipo": "SUPERVISIÓN", "area": "PRODUCCIÓN", "puesto": "Coodinador de Obra"}, {"name": "OMAR RODRIGO CARRILLO VAZQUEZ", "tipo": "JEFATURA", "area": "PRODUCCIÓN", "puesto": "Coordinador de Producción"}, {"name": "JOSÉ CARLOS GONZÁLEZ NUÑEZ", "tipo": "JEFATURA", "area": "PRODUCCIÓN", "puesto": "Coordinador de Producción"}, {"name": "JUAN FRANCISCO RIVERA ESQUER", "tipo": "GERENCIAL", "area": "PRODUCCIÓN", "puesto": "Gerente de Producción"}, {"name": "OMAR HERNÁNDEZ VELÁZQUEZ", "tipo": "JEFATURA", "area": "PRODUCCIÓN", "puesto": "Coordinador de Producción"}, {"name": "CRISTIAN ANUAR MONROY SERRANO", "tipo": "HSE", "area": "SEGURIDAD", "puesto": "Jefatura de Seguridad y Control Ambiental"}, {"name": "DIEGO ARMANDO VILLANUEVA MIRELES", "tipo": "HSE", "area": "SEGURIDAD", "puesto": "Supervisor de Seguridad y Medio Ambiente"}, {"name": "CRISTIAN RAMIREZ RUANO", "tipo": "HSE", "area": "SEGURIDAD", "puesto": "Supervisor de Seguridad y Medio Ambiente"}, {"name": "JOSÉ EDMUNDO CASTILLO SUÁREZ", "tipo": "SUPERVISIÓN", "area": "SGI", "puesto": "Laboratorista Especializado en Calibración"}, {"name": "N/A", "tipo": "N/A", "area": "N/A", "puesto": "N/A"}], "categories": [{"primary": "ACCIONES Y REACCIONES DE LAS PERSONAS", "secondary": "RP1 Ayudan o Colocan su equipo de protección personal", "code": "RP1"}, {"primary": "ACCIONES Y REACCIONES DE LAS PERSONAS", "secondary": "RP2 Cambian de Posición súbitamente", "code": "RP2"}, {"primary": "ACCIONES Y REACCIONES DE LAS PERSONAS", "secondary": "RP3 Reacomodan su trabajo", "code": "RP3"}, {"primary": "ACCIONES Y REACCIONES DE LAS PERSONAS", "secondary": "RP4 Dejan de trabajar o se ajejan del lugar", "code": "RP4"}, {"primary": "ACCIONES Y REACCIONES DE LAS PERSONAS", "secondary": "RP5 Colocan Tierras eléctricas u otra proteccción", "code": "RP5"}, {"primary": "ACCIONES Y REACCIONES DE LAS PERSONAS", "secondary": "RP6 Colocan Bloqueos (Tarjetas y candados)", "code": "RP6"}, {"primary": "ACCIONES Y REACCIONES DE LAS PERSONAS", "secondary": "RP7 Colocan Guardas", "code": "RP6"}, {"primary": "EQUIPO DE PROTECCIÓN PERSONAL", "secondary": "EP1 Cabeza", "code": "EP1"}, {"primary": "EQUIPO DE PROTECCIÓN PERSONAL", "secondary": "EP2 Ojos y Caras", "code": "EP2"}, {"primary": "EQUIPO DE PROTECCIÓN PERSONAL", "secondary": "EP3 Oídos", "code": "EP3"}, {"primary": "EQUIPO DE PROTECCIÓN PERSONAL", "secondary": "EP4 Aparato Resporatorio", "code": "EP4"}, {"primary": "EQUIPO DE PROTECCIÓN PERSONAL", "secondary": "EP5 Brazos y Manos", "code": "EP5"}, {"primary": "EQUIPO DE PROTECCIÓN PERSONAL", "secondary": "EP6 Tronco", "code": "EP6"}, {"primary": "EQUIPO DE PROTECCIÓN PERSONAL", "secondary": "EP7 Piernas y Pies", "code": "EP7"}, {"primary": "POSICIONES DE LAS PERSONAS", "secondary": "PP1 Golpear contra objetos o ser golpeado", "code": "PP1"}, {"primary": "POSICIONES DE LAS PERSONAS", "secondary": "PP2 Quedar atrapado dentro, entre o sobre objetos o equipos", "code": "PP2"}, {"primary": "POSICIONES DE LAS PERSONAS", "secondary": "PP3 Caídas", "code": "PP3"}, {"primary": "POSICIONES DE LAS PERSONAS", "secondary": "PP4 Contacto con temperaturas extremas", "code": "PP4"}, {"primary": "POSICIONES DE LAS PERSONAS", "secondary": "PP5 Contacto con corriente eléctrica", "code": "PP5"}, {"primary": "POSICIONES DE LAS PERSONAS", "secondary": "PP6 Inhalación, absorción, ingesta de una sustancia peligrosa", "code": "PP6"}, {"primary": "POSICIONES DE LAS PERSONAS", "secondary": "PP7 Sobreesfuerzos, Movimientos repetitivos, Posiciones incomodas y posturas estáticas", "code": "PP7"}, {"primary": "HERRAMIENTAS Y EQUIPO", "secondary": "HE1 Uso de equipo y herramientas incorrectas de trabajo", "code": "HE1"}, {"primary": "HERRAMIENTAS Y EQUIPO", "secondary": "HE2 Uso de equipo y herramientas empleados en forma incorrecta", "code": "HE2"}, {"primary": "HERRAMIENTAS Y EQUIPO", "secondary": "HE3 Uso de equipo y herramientas en condiciones inseguras", "code": "HE3"}, {"primary": "HERRAMIENTAS Y EQUIPO", "secondary": "HE4 No cuentas con herramientas y/o equipo adecuado", "code": "HE4"}, {"primary": "PROCEDIMIENTOS", "secondary": "PR1 Procedimientos que no conocidos o comprendidos", "code": "PR1"}, {"primary": "PROCEDIMIENTOS", "secondary": "PR2 Procedimientos que no se cumplen", "code": "PR2"}, {"primary": "PROCEDIMIENTOS", "secondary": "PR3 Procedimientos incorrectos que no describen el trabajo", "code": "PR3"}, {"primary": "PROCEDIMIENTOS", "secondary": "PR4 Procedimientos no existen o no son conocidos", "code": "PR4"}, {"primary": "ORDEN Y LIMPIEZA", "secondary": "OL1 Estándares de Orden y Limpieza inadecuada para el trabajo", "code": "OL1"}, {"primary": "ORDEN Y LIMPIEZA", "secondary": "OL2 Estándares de Orden y Limpieza no conocidos o comprendidos", "code": "OL2"}], "causes": [{"primary": "ATAJOS o IMPROVISACIONES", "secondary": "AI1 Equipo Inoperante, defectuoso, deteriorado, o funcionando incorrectamente", "code": "AI1"}, {"primary": "ATAJOS o IMPROVISACIONES", "secondary": "AI2 Equipo Inadecuado, insuficiente, incompleto o sin la capacidad necesaria; instalaciones inadecuadas para el almacenamiento de herramientas o implementos del proceso", "code": "AI2"}, {"primary": "ATAJOS o IMPROVISACIONES", "secondary": "AI3 Presiones para mantener o incrementar la producción; falta de personal o poco tiempo para realizar el trabajo correctamente", "code": "AI3"}, {"primary": "ATAJOS o IMPROVISACIONES", "secondary": "AI4 \"Otros\" no prepara, mantienen o inspeccionan el equipo correctamente", "code": "AI4"}, {"primary": "ATAJOS o IMPROVISACIONES", "secondary": "AI5 No está conciente de peligros (alta temperatura, inflamabilidad, atrapamiento, etc.); no conoce que requiere de específico; desconoce advetiencias y avisos de peligros", "code": "AI5"}, {"primary": "FALTA DE MEMORIA", "secondary": "FM1 La distracción, ocasionada por operaciones cercanas, construcción, ruido o condiciones inusuales", "code": "FM1"}, {"primary": "FALTA DE MEMORIA", "secondary": "FM2 Cansancio, resultado de trabajar tiempo extra, dobles turnos y problemas o actividades personales", "code": "FM2"}, {"primary": "FALTA DE MEMORIA", "secondary": "FM3 Falta de concentración debida a incertidumbre en las relaciones laborales, el futuro de las operaciones, el paro o cierre inminente o problemas personales", "code": "FM3"}, {"primary": "FALTA DE MEMORIA", "secondary": "FM4 Falta de experiencias - en el trabajo y en la empresa", "code": "FM4"}, {"primary": "NO HAY REGLAS o PROCEDIMIENTOS", "secondary": "RPI Falta de una guía adecuada. Las decisiones respecto al equipo de protección, las reglas y los procedimientos fueron dejados a los empleados, quienes pudieron haber alicado un juicio pobre", "code": "RPI"}, {"primary": "NO HAY REGLAS o PROCEDIMIENTOS", "secondary": "RP2 Fallas en reconocer la acción como un acto inseguro. NO todas las acciones o prácticas de trabajo pueden ser formalizadas en reglas o procedimientos. Consecuentemente, un buen juicio en seguridad deber ser utilizado para evitar peligros y lesiones", "code": "RP2"}, {"primary": "INCONFORMIDAD", "secondary": "IN1 Respuesta defensiva o nula", "code": "IN1"}, {"primary": "INCONFORMIDAD", "secondary": "IN2 Excusas como el pobre ejemplo de los contratistas, vendedores o empleados de otros grupos de traabajo", "code": "IN2"}, {"primary": "INCONFORMIDAD", "secondary": "IN3 Exceso de confianza para \"cuidarse uno mismo\" sin lesionarse", "code": "IN3"}, {"primary": "INCONFORMIDAD", "secondary": "IN4 Que el trabajo no puede efectuarse con tantas reglas o requisitos", "code": "IN4"}, {"primary": "INCONFORMIDAD", "secondary": "IN5 Holgazanería, desobediencia, isubordinación, luego o querr aparentar", "code": "IN5"}, {"primary": "SUPERVISIÓN", "secondary": "SU1 Omisión", "code": "SU1"}, {"primary": "SUPERVISIÓN", "secondary": "SU2 Poner un ejemplo pobre", "code": "SU2"}, {"primary": "SUPERVISIÓN", "secondary": "SU3 Fallas en percibir o identificar prácicas de trabajo inseguras y peligros en el proceso", "code": "SU3"}, {"primary": "SUPERVISIÓN", "secondary": "SU4 Tolerar o perdonar prácticas inseguras", "code": "SU4"}, {"primary": "SUPERVISIÓN", "secondary": "SU5 Coexistir con los bajos estandares de seguridad prevalecientes a pesar de los pobres resultados en seguridad", "code": "SU5"}, {"primary": "SUPERVISIÓN", "secondary": "SU6 Fallas en el seguimiento a la corrección en la deficiencia", "code": "SU6"}, {"primary": "SUPERVISIÓN", "secondary": "SU7 Desfavorable administración de la seguridad", "code": "SU7"}, {"primary": "GERENCIA", "secondary": "GE1 Alteración de las prioridades respecto a producción, mantenimiento y seguridad son tomar en cuenta (o ser guiado) por los resultados de las auditorías de seguridad, los reportes de incidentes, la frecuencia de lesiones, o las pérdidas de propiedad", "code": "GE1"}, {"primary": "GERENCIA", "secondary": "GE2 Falla en estar conciente de las deficiencias serias en los aspectos principales de la seguirdad tales como las revisiones de peligro de proceso, la protección contra incendio y la higiene industrial", "code": "GE2"}, {"primary": "GERENCIA", "secondary": "GE3 Falta de, o el entrenamiento inadecuado en los aspectos fundamentales de la seguridad", "code": "GE3"}, {"primary": "GERENCIA", "secondary": "GE4 El equipo de liderazgo para seguridad no está cumpliendo sus responsabilidades en el establecimiento de estándares y políticas", "code": "GE4"}], "headers": ["PLANTA", "AREA", "FECHA AUDITORIA", "FECHA REGISTRO", "HORA INICIO", "HORA TERMINO", "AUDITOR LIDER", "PUESTO AUDITOR LIDER", "TIPO AE", "AUDITOR ACOMPAÑANTE", "PUESTO AUDITOR ACOMPAÑANTE", "TIPO AE", "OBSERVACION", "NOMBRE", "Area a la que pertenece la persona abordada", "PERSONAL INTERNO", "Puesto", "PERSONAL EXTERNO", "Puesto", "Nombre de la empresa", "ACTO INSEGURO OBSERVADO", "FS", "CATEGORIA PRIMARIA", "CATEGORIA SECUNDARIA", "CAUSA PRIMARIA", "CAUSA SECUNDARIA", "No. De personas observadas", "OBSERVACIONES"], "personAreas": ["Mantenimiento de plantas", "Mantenimiento automotriz", "Ingeniería", "Abastecimientos", "Recursos humanos", "Salud ocupacional", "Producción", "Logística y bombeo", "Seguridad, higiene y medio ambiente", "Seguridad patrimonial"]};
+
+
+// ===== Requeridos (Seguridad / HSE) =====
+var REQUIRED_PLANTS = ["PLANTA TOLUCA","PLANTA LEÓN II","PLANTA TULTEPEC","PLANTA TEOLOYUCAN II","PLANTA QRO AEROPUERTO","PLANTA ZAPOPAN II"];
+var REQUIRED_AUDITORS = [
+  {"name":"MARIA GUADALUPE GARDUÑO MENDINO","tipo":"HSE","area":"SEGURIDAD","puesto":"Supervisor de Seguridad y Medio Ambiente"},
+  {"name":"LUIS RICARDO GONZALEZ PEREZ","tipo":"HSE","area":"SEGURIDAD","puesto":"Supervisor de Seguridad y Medio Ambiente"}
+];
+var REQUIRED_PERSON_AREAS = ["Mantenimiento de plantas","Mantenimiento automotriz","Ingeniería","Abastecimientos","Recursos humanos","Salud ocupacional","Producción","Logística y bombeo","Seguridad, higiene y medio ambiente","Seguridad patrimonial"];
+
+function cloneCatalogBase(base) {
+  return {
+    plants: (base && base.plants && base.plants.slice) ? base.plants.slice() : [],
+    areas:  (base && base.areas && base.areas.slice) ? base.areas.slice() : [],
+    personAreas: (base && base.personAreas && base.personAreas.slice) ? base.personAreas.slice() : [],
+    auditors: (base && base.auditors && base.auditors.slice) ? base.auditors.slice() : [],
+    categories: (base && base.categories) ? base.categories : CATALOG_RAW.categories,
+    causes: (base && base.causes) ? base.causes : CATALOG_RAW.causes,
+    headers: (base && base.headers) ? base.headers : CATALOG_RAW.headers
+  };
+}
+function ensureRequiredCatalog(base) {
+  base = cloneCatalogBase(base);
+  // Plantas
+  for(var i=0;i<REQUIRED_PLANTS.length;i++) {
+    var p = REQUIRED_PLANTS[i];
+    if(base.plants.indexOf(p)===-1) base.plants.unshift(p);
+  }
+  // Auditores
+  for(var j=0;j<REQUIRED_AUDITORS.length;j++) {
+    var a = REQUIRED_AUDITORS[j];
+    var exists=false;
+    for(var k=0;k<base.auditors.length;k++) {
+      if(base.auditors[k] && base.auditors[k].name===a.name) { exists=true; break; }
+    }
+    if(!exists) base.auditors.unshift(a);
+  }
+  // Áreas persona (departamentos)
+  if(!base.personAreas || !base.personAreas.slice) base.personAreas = [];
+  for(var x=0;x<REQUIRED_PERSON_AREAS.length;x++) {
+    var ap = REQUIRED_PERSON_AREAS[x];
+    if(base.personAreas.indexOf(ap)===-1) base.personAreas.push(ap);
+  }
+
+  return base;
+}
+
+var ADMIN_PASSWORD = "2025";
+var ADMIN_SESSION_KEY = "AE_ADMIN_AUTH_v1";
+
+var STORAGE_KEY = "AE_DB_ES5_v1";
+var HEADER_KEY  = "AE_HDR_ES5_v1";
+var LOGO_KEY    = "AE_LOGO_ES5_v1";
+
+var DISABLED_PLANTS_KEY = "AE_DISABLED_PLANTS_ES5_v1";
+var DISABLED_AREAS_KEY  = "AE_DISABLED_AREAS_ES5_v1";
+var DISABLED_AUDS_KEY   = "AE_DISABLED_AUDITORS_ES5_v1";
+var CATALOG_OVERRIDE_KEY = "AE_CATALOG_OVERRIDE_ES5_v1";
+
+var db = [];
+var hdr = null;
+var disabled = { plants: [], areas: [], auditors: [] };
+var CATALOG = null;
+var AUDITOR_MAP = {};
+var charts = {};
+
+function $(id) { return document.getElementById(id); }
+function toast(msg) {
+  var t = $("toast"); var m = $("toastMsg");
+  if(!t || !m) return;
+  m.innerHTML = msg;
+  t.style.display = "block";
+  setTimeout(function(){ t.style.display="none"; }, 2400);
+}
+
+function todayISO() {
+  var d = new Date();
+  var tzOff = d.getTimezoneOffset()*60000;
+  return new Date(d.getTime() - tzOff).toISOString().slice(0,10);
+}
+
+function pad2(n){ return (n<10?"0":"") + n; }
+function fmtYMD(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+function parseYMD(s){
+  var m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(String(s||""));
+  if(!m) return null;
+  return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+}
+
+function normalizeYMD(s){
+  var d = parseYMD(s);
+  if(d) return fmtYMD(d);
+  try {
+    var dd = new Date(String(s||""));
+    if(!isNaN(dd.getTime())) return fmtYMD(dd);
+  } catch(e){}
+  return todayISO();
+}
+
+function addDays(d, days){
+  var x=new Date(d.getTime());
+  x.setDate(x.getDate()+days);
+  return x;
+}
+function isoWeekMonday(year, week){
+  // ISO week: week 1 is the week with Jan 4th
+  var jan4 = new Date(year, 0, 4);
+  var day = jan4.getDay(); // 0 Sun .. 6 Sat
+  var diff = (day===0 ? -6 : 1-day); // move to Monday
+  var week1Mon = addDays(jan4, diff);
+  return addDays(week1Mon, (week-1)*7);
+}
+function parseWeekValue(v){
+  var m = /^([0-9]{4})-W([0-9]{2})$/.exec(String(v||""));
+  if(!m) return null;
+  return {y:Number(m[1]), w:Number(m[2])};
+}
+function weekRangeFromInput(v){
+  var p=parseWeekValue(v);
+  if(!p) return null;
+  var start = isoWeekMonday(p.y, p.w);
+  var end = addDays(start, 6);
+  return {start: fmtYMD(start), end: fmtYMD(end)};
+}
+function monthRangeFromInput(v){
+  var m = /^([0-9]{4})-([0-9]{2})$/.exec(String(v||""));
+  if(!m) return null;
+  var y=Number(m[1]), mo=Number(m[2])-1;
+  var start = new Date(y, mo, 1);
+  var end = new Date(y, mo+1, 0);
+  return {start: fmtYMD(start), end: fmtYMD(end)};
+}
+function isoWeekValueFromDate(d){
+  // Returns YYYY-Www
+  var x = new Date(d.getTime());
+  x.setHours(0,0,0,0);
+  // Thursday in current week decides the year.
+  x.setDate(x.getDate() + 3 - ((x.getDay()+6)%7));
+  var week1 = new Date(x.getFullYear(),0,4);
+  var weekNo = 1 + Math.round(((x.getTime() - week1.getTime())/86400000 - 3 + ((week1.getDay()+6)%7)) / 7);
+  return x.getFullYear() + "-W" + pad2(weekNo);
+}
+
+function nowHHMM() {
+  var d=new Date();
+  var hh=("0"+d.getHours()).slice(-2);
+  var mm=("0"+d.getMinutes()).slice(-2);
+  return hh+":"+mm;
+}
+function nowHHMMSS() {
+  var d=new Date();
+  var hh=("0"+d.getHours()).slice(-2);
+  var mm=("0"+d.getMinutes()).slice(-2);
+  var ss=("0"+d.getSeconds()).slice(-2);
+  return hh+":"+mm+":"+ss;
+}
+function uid() {
+  return String(Date.now()) + "_" + String(Math.floor(Math.random()*1e9));
+}
+
+function loadJSON(key, fallback) {
+  try {
+    var v = localStorage.getItem(key);
+    if(!v) return fallback;
+    return JSON.parse(v);
+  } catch(e) { return fallback; }
+}
+function saveJSON(key, obj) {
+  localStorage.setItem(key, JSON.stringify(obj));
+}
+
+function loadState() {
+  db = loadJSON(STORAGE_KEY, []);
+  hdr = loadJSON(HEADER_KEY, null);
+  disabled.plants = loadJSON(DISABLED_PLANTS_KEY, []);
+  disabled.areas  = loadJSON(DISABLED_AREAS_KEY, []);
+  disabled.auditors = loadJSON(DISABLED_AUDS_KEY, []);
+  setStatus();
+  loadLogo();
+}
+function saveDB() {
+  saveJSON(STORAGE_KEY, db);
+  setStatus();
+}
+function saveHDR() {
+  saveJSON(HEADER_KEY, hdr);
+  setStatus();
+}
+function saveDisabled() {
+  saveJSON(DISABLED_PLANTS_KEY, disabled.plants);
+  saveJSON(DISABLED_AREAS_KEY, disabled.areas);
+  saveJSON(DISABLED_AUDS_KEY, disabled.auditors);
+}
+
+function loadCatalogOverride() {
+  return loadJSON(CATALOG_OVERRIDE_KEY, null);
+}
+function saveCatalogOverride(ovr) {
+  saveJSON(CATALOG_OVERRIDE_KEY, ovr);
+}
+function clearCatalogOverride() {
+  localStorage.removeItem(CATALOG_OVERRIDE_KEY);
+}
+
+function getCatalog() {
+  var ovr = loadCatalogOverride();
+  var base = CATALOG_RAW;
+  if(ovr) {
+    base = {
+      plants: Array.isArray(ovr.plants) ? ovr.plants : CATALOG_RAW.plants,
+      areas: Array.isArray(ovr.areas) ? ovr.areas : CATALOG_RAW.areas,
+      personAreas: Array.isArray(ovr.personAreas) ? ovr.personAreas : (CATALOG_RAW.personAreas||[]),
+      auditors: Array.isArray(ovr.auditors) ? ovr.auditors : CATALOG_RAW.auditors,
+      categories: CATALOG_RAW.categories,
+      causes: CATALOG_RAW.causes,
+      headers: CATALOG_RAW.headers
+    };
+  }
+  base = ensureRequiredCatalog(base);
+  var plants = [];
+  for(var i=0;i<base.plants.length;i++) {
+    if(disabled.plants.indexOf(base.plants[i])===-1) plants.push(base.plants[i]);
+  }
+  var areas = [];
+  for(var j=0;j<base.areas.length;j++) {
+    if(disabled.areas.indexOf(base.areas[j])===-1) areas.push(base.areas[j]);
+  }
+  var auditors = [];
+  for(var k=0;k<base.auditors.length;k++) {
+    if(disabled.auditors.indexOf(base.auditors[k].name)===-1) auditors.push(base.auditors[k]);
+  }
+  if(plants.length===0) plants = base.plants.slice();
+  if(areas.length===0) areas = base.areas.slice();
+  if(auditors.length===0) auditors = base.auditors.slice();
+
+  return {
+    plants: plants,
+    areas: areas,
+    personAreas: (base.personAreas && base.personAreas.slice) ? base.personAreas.slice() : [],
+    auditors: auditors,
+    categories: base.categories,
+    causes: base.causes,
+    headers: base.headers
+  };
+}
+
+function option(el, value, label) {
+  var o=document.createElement("option");
+  o.value=value; o.textContent=label;
+  el.appendChild(o);
+}
+function fillSelect(el, values, firstLabel) {
+  el.innerHTML="";
+  option(el, "", firstLabel||"(Selecciona)");
+  for(var i=0;i<values.length;i++) option(el, values[i], values[i]);
+}
+
+function mapByName(auditors) {
+  var m={};
+  for(var i=0;i<auditors.length;i++) m[auditors[i].name]=auditors[i];
+  return m;
+}
+
+function initCatalogs() {
+  CATALOG = getCatalog();
+  AUDITOR_MAP = mapByName(CATALOG.auditors);
+
+  if($("planta")) fillSelect($("planta"), CATALOG.plants, "(Selecciona)");
+  if($("area")) fillSelect($("area"), CATALOG.areas, "(Selecciona)");
+  if($("areaPersona")) fillSelect($("areaPersona"), (CATALOG.personAreas||[]), "(Selecciona)");
+
+  function fillAud(el) {
+    if(!el) return;
+    el.innerHTML="";
+    option(el,"","(Selecciona)");
+    for(var i=0;i<CATALOG.auditors.length;i++) option(el, CATALOG.auditors[i].name, CATALOG.auditors[i].name);
+  }
+  fillAud($("auditorLider"));
+  fillAud($("auditorAcomp"));
+
+  // filtros
+  if($("fPlanta")) fillSelect($("fPlanta"), CATALOG.plants, "(Todas)");
+  if($("fArea")) fillSelect($("fArea"), CATALOG.areas, "(Todas)");
+  if($("fAreaPersona")) fillSelect($("fAreaPersona"), (CATALOG.personAreas||[]), "(Todas)");
+  if($("fAuditor")) {
+    $("fAuditor").innerHTML=""; option($("fAuditor"),"", "(Todos)");
+    for(var i=0;i<CATALOG.auditors.length;i++) option($("fAuditor"), CATALOG.auditors[i].name, CATALOG.auditors[i].name);
+  }
+
+  // cascadas categoría/causa
+  if($("catPrim")) {
+    var primCats={}; 
+    for(var i=0;i<CATALOG.categories.length;i++) primCats[CATALOG.categories[i].primary]=1;
+    var keys=[]; for(var k in primCats) if(k) keys.push(k);
+    fillSelect($("catPrim"), keys, "(No aplica)");
+  }
+  if($("causaPrim")) {
+    var primC={}; 
+    for(var i=0;i<CATALOG.causes.length;i++) primC[CATALOG.causes[i].primary]=1;
+    var keys2=[]; for(var k2 in primC) if(k2) keys2.push(k2);
+    fillSelect($("causaPrim"), keys2, "(No aplica)");
+  }
+
+  // Auditor vs auditor selects (dashboard)
+  renderAuditorCompareSelects();
+}
+
+function wireCategoryCascades() {
+  if($("catPrim")) $("catPrim").onchange = function() {
+    var p = this.value;
+    var secs=[];
+    for(var i=0;i<CATALOG.categories.length;i++) if(CATALOG.categories[i].primary===p) secs.push(CATALOG.categories[i].secondary);
+    if($("catSec")) fillSelect($("catSec"), secs, p? "(Selecciona)":"(No aplica)");
+  };
+  if($("causaPrim")) $("causaPrim").onchange = function() {
+    var p = this.value;
+    var secs=[];
+    for(var i=0;i<CATALOG.causes.length;i++) if(CATALOG.causes[i].primary===p) secs.push(CATALOG.causes[i].secondary);
+    if($("causaSec")) fillSelect($("causaSec"), secs, p? "(Selecciona)":"(No aplica)");
+  };
+}
+
+function wireAuditorAutofill() {
+  function fill(selId, puestoId, tipoId, gerenciaId, afterFn) {
+    var sel=$(selId);
+    if(!sel) return;
+    sel.onchange = function() {
+      var a = AUDITOR_MAP[sel.value];
+      if($(puestoId)) $(puestoId).value = a ? (a.puesto||"") : "";
+      if($(tipoId)) $(tipoId).value = a ? (a.tipo||"") : "";
+      if(gerenciaId && $(gerenciaId)) $(gerenciaId).value = a ? (a.area||"") : "";
+      if(afterFn) try { afterFn(a); } catch(e){}
+    };
+  }
+  // Líder: autocompleta puesto, "gerencia" (área corporativa) y tipo AE, y además auto-llena Tipo de observación
+  fill("auditorLider","puestoLider","tipoAELider","gerenciaLider", function(a){
+    applyTipoObsFromLeaderUI();
+  });
+  // Acompañante: solo autocompleta campos propios
+  fill("auditorAcomp","puestoAcomp","tipoAEAcomp", null, null);
+}
+
+
+function initDefaults() {
+  if($("fechaAuditoria")) $("fechaAuditoria").value = todayISO();
+  if($("fechaRegistro")) { $("fechaRegistro").value = todayISO(); $("fechaRegistro").disabled = true; }
+  if($("horaRegistro")) { $("horaRegistro").value = nowHHMMSS(); $("horaRegistro").disabled = true; }
+  if($("horaInicio")) $("horaInicio").value = nowHHMM();
+  if($("nPersonas")) { $("nPersonas").value = "1"; $("nPersonas").disabled = true; }
+  if($("tipoObs")) $("tipoObs").value = "Seguridad";
+  // Si ya se seleccionó auditor líder, auto-ajusta el Tipo de observación
+  try { applyTipoObsFromLeaderUI(); } catch(e){}
+  syncPuestosByTipoPersonal();
+}
+
+function syncPuestosByTipoPersonal() {
+  var tp = $("tipoPersonal");
+  if(!tp) return;
+  var interno = (tp.value === "Interno");
+  if($("puestoInterno")) $("puestoInterno").disabled = !interno;
+  if($("puestoExterno")) $("puestoExterno").disabled = interno;
+  if($("empresa")) $("empresa").disabled = interno;
+  if(interno) {
+    if($("puestoExterno")) $("puestoExterno").value="";
+    if($("empresa")) $("empresa").value="";
+  } else {
+    if($("puestoInterno")) $("puestoInterno").value="";
+  }
+}
+
+function setStatus() {
+  if($("dbCount")) $("dbCount").textContent = String(db.length);
+  if($("pillSaved")) $("pillSaved").innerHTML = 'Encabezado: <b>' + (hdr ? "Sí":"No") + '</b>';
+}
+
+function isAdminAuthed() {
+  return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+}
+function requireAdminAuth() {
+  if(isAdminAuthed()) return true;
+  var p = prompt("Contraseña de administrador:");
+  if(p === ADMIN_PASSWORD) {
+    sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    toast("✅ Acceso de administrador habilitado.");
+    return true;
+  }
+  toast("⛔ Contraseña incorrecta.");
+  return false;
+}
+
+function showTab(name) {
+  if(name==="admin") {
+    if(!requireAdminAuth()) name="captura";
+  }
+  var btns = document.querySelectorAll(".tabbtn");
+  for(var i=0;i<btns.length;i++) {
+    if(btns[i].dataset.tab===name) btns[i].classList.add("active");
+    else btns[i].classList.remove("active");
+  }
+  var tabs = ["captura","registros","dashboard","admin"];
+  for(var j=0;j<tabs.length;j++) {
+    var el = $("tab-"+tabs[j]);
+    if(el) {
+      if(tabs[j]===name) el.classList.remove("hide"); else el.classList.add("hide");
+    }
+  }
+  if(name==="registros") renderTable();
+  if(name==="dashboard") renderDashboard();
+  if(name==="admin") { renderAdminCatalogs(); renderEditCatalogs(); wireCatalogEditorButtons(); }
+}
+
+function wireTabs() {
+  var btns = document.querySelectorAll(".tabbtn");
+  for(var i=0;i<btns.length;i++) {
+    btns[i].setAttribute("type","button");
+    btns[i].addEventListener("click", function(ev){
+      ev.preventDefault(); ev.stopPropagation();
+      showTab(this.dataset.tab);
+    });
+  }
+}
+
+function readHeaderFromUI() {
+  var planta = $("planta") ? $("planta").value : "";
+  var area = $("area") ? $("area").value : "";
+  var fechaAuditoria = $("fechaAuditoria") ? $("fechaAuditoria").value : "";
+  var horaInicio = $("horaInicio") ? $("horaInicio").value : "";
+  var auditorLider = $("auditorLider") ? $("auditorLider").value : "";
+  if(!planta || !area || !fechaAuditoria || !horaInicio || !auditorLider) {
+    return {ok:false, msg:"Completa: Planta, Área, Fecha auditoría, Hora inicio y Auditor líder."};
+  }
+  var auditorAcomp = $("auditorAcomp") ? $("auditorAcomp").value : "";
+  var aL = AUDITOR_MAP[auditorLider] || {};
+  var aA = AUDITOR_MAP[auditorAcomp] || {};
+  return {
+    ok:true,
+    data:{
+      planta:planta,
+      area:area,
+      fechaAuditoria:fechaAuditoria,
+      fechaRegistro: todayISO(),
+      horaRegistro: nowHHMMSS(),
+      horaInicio:horaInicio,
+      horaTermino: $("horaTermino") ? $("horaTermino").value : "",
+      auditorLider:auditorLider,
+      puestoLider: ($("puestoLider") ? $("puestoLider").value : "") || (aL.puesto||""),
+      tipoAELider: ($("tipoAELider") ? $("tipoAELider").value : "") || (aL.tipo||""),
+      gerenciaLider: ($("gerenciaLider") ? $("gerenciaLider").value : "") || (aL.area||""),
+      auditorAcomp: auditorAcomp,
+      puestoAcomp: ($("puestoAcomp") ? $("puestoAcomp").value : "") || (aA.puesto||""),
+      tipoAEAcomp: ($("tipoAEAcomp") ? $("tipoAEAcomp").value : "") || (aA.tipo||""),
+      tipoRecorrido: $("tipoRecorrido") ? $("tipoRecorrido").value : "Ordinario",
+      auditId: (hdr && hdr.auditId) ? hdr.auditId : uid()
+    }
+  };
+}
+
+function computeIAS(rows) {
+  if(!rows || rows.length===0) return 0;
+  var seguros=0;
+  for(var i=0;i<rows.length;i++) if(String(rows[i]["OBSERVACION"])==="1") seguros++;
+  return (seguros/rows.length)*100;
+}
+
+
+function updateHeaderAuditStats() {
+  if(!$("iasEncabezado") || !$("countEncabezado")) return;
+  if(!hdr || !hdr.auditId) {
+    $("iasEncabezado").value = "—";
+    $("countEncabezado").value = "0";
+    return;
+  }
+  var rows = getRowsByAuditId(hdr.auditId);
+  var ias = computeIAS(rows);
+  $("iasEncabezado").value = (rows.length===0) ? "0.0%" : (ias.toFixed(1) + "%");
+  $("countEncabezado").value = String(rows.length);
+  // Persistir IAS final si ya se calculó
+  if(typeof hdr.iasPct === "number") {
+    // ok
+  }
+}
+
+function safeUpper(s){ return String(s||"").toUpperCase(); }
+
+function mapTipoObsFromLeader(a) {
+  // Regla solicitada: el Tipo de observación se llena automáticamente según el Tipo AE del auditor líder
+  var tipo = safeUpper(a && a.tipo);
+  var ger  = safeUpper(a && a.area); // "gerencia" del auditor (área corporativa)
+  if(tipo==="HSE" || ger==="SEGURIDAD") return "Seguridad";
+  if(ger==="MANTENIMIENTO") return "Mantenimiento";
+  if(ger==="CALIDAD") return "Calidad";
+  if(tipo==="GERENCIAL" || tipo==="DIRECCIÓN" || tipo==="DIRECCION") return "Gerencial";
+  // default: Área
+  return "Área";
+}
+
+function applyTipoObsFromLeaderUI() {
+  var sel = $("auditorLider");
+  var a = sel ? AUDITOR_MAP[sel.value] : null;
+  var v = mapTipoObsFromLeader(a);
+  if($("tipoObs") && v) $("tipoObs").value = v;
+}
+
+/* ========= Reforzamiento positivo (foto + marco + WhatsApp) ========= */
+var reconOriginalDataUrl = null;
+var reconFramedDataUrl = null;
+var reconFramedBlob = null;
+
+function setRegistroMode() {
+  var t = $("tipoRegistro") ? $("tipoRegistro").value : "1";
+  var box = $("reconBox");
+  var lbl = $("lblActo");
+  if(t==="1") {
+    if(box) box.style.display = "block";
+    if($("fotoRecon")) $("fotoRecon").style.display="block";
+    if($("cambiarFotoRecon")) $("cambiarFotoRecon").style.display="none";
+    if(lbl) lbl.firstChild ? (lbl.childNodes[0].nodeValue="Acto seguro observado") : null;
+    if($("fs")) $("fs").value="";
+    if($("fs")) $("fs").disabled=true;
+    // categorías/causas no aplican
+    if($("catPrim")) $("catPrim").disabled=true;
+    if($("catSec")) $("catSec").disabled=true;
+    if($("causaPrim")) $("causaPrim").disabled=true;
+    if($("causaSec")) $("causaSec").disabled=true;
+  } else {
+    if(box) box.style.display = "none";
+    if(lbl) lbl.firstChild ? (lbl.childNodes[0].nodeValue="Acto inseguro observado / Condición insegura") : null;
+    if($("fs")) $("fs").disabled=false;
+    if($("catPrim")) $("catPrim").disabled=false;
+    if($("catSec")) $("catSec").disabled=false;
+    if($("causaPrim")) $("causaPrim").disabled=false;
+    if($("causaSec")) $("causaSec").disabled=false;
+    reconOriginalDataUrl=null; reconFramedDataUrl=null; reconFramedBlob=null;
+    if($("fotoPreview")) { $("fotoPreview").style.display="none"; $("fotoPreview").src=""; }
+  if($("fotoPreviewMarco")) { $("fotoPreviewMarco").style.display="none"; $("fotoPreviewMarco").src=""; }
+    if($("compartirRecon")) $("compartirRecon").disabled=true;
+    if($("descargarRecon")) $("descargarRecon").disabled=true;
+  }
+}
+
+function wrapText(ctx, text, maxWidth) {
+  var words = String(text||"").split(/\s+/);
+  var lines=[], line="";
+  for(var n=0;n<words.length;n++) {
+    var test = line ? (line + " " + words[n]) : words[n];
+    var w = ctx.measureText(test).width;
+    if(w > maxWidth && line) {
+      lines.push(line);
+      line = words[n];
+    } else {
+      line = test;
+    }
+  }
+  if(line) lines.push(line);
+  return lines;
+}
+
+
+function rand(min,max){ return min + Math.random()*(max-min); }
+function drawConfetti(ctx, w, h, count) {
+  // Confeti llamativo (solo overlay)
+  var colors = ["#22c55e","#a7f3d0","#f59e0b","#fde047","#60a5fa","#a78bfa","#fb7185","#ffffff"];
+  for(var i=0;i<count;i++) {
+    var x = rand(0,w);
+    var y = rand(0,h*0.42); // arriba
+    var rw = rand(6, 18);
+    var rh = rand(6, 16);
+    var rot = rand(0, Math.PI);
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(rot);
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fillRect(-rw/2,-rh/2,rw,rh);
+    ctx.restore();
+  }
+  // Emojis “sparkle” dispersos
+  var em = ["🎉","🎊","✨","✅","🦺","🛡️"];
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  var font = Math.max(28, Math.round(Math.min(w,h)*0.04));
+  ctx.font = "800 " + font + "px system-ui";
+  for(var j=0;j<18;j++) {
+    var ex = rand(0,w);
+    var ey = rand(0,h*0.42);
+    ctx.fillText(em[j%em.length], ex, ey);
+  }
+  ctx.restore();
+}
+
+function drawEmojiBorder(ctx, w, h, bw) {
+  var strip = ["🦺","✅","🛡️","🌟","🎉"];
+  var step = Math.max(48, Math.round(bw*4));
+  ctx.save();
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.globalAlpha = 0.95;
+  ctx.font = "900 " + Math.max(26, Math.round(bw*1.8)) + "px system-ui";
+  // Superior
+  var yTop = bw*0.9;
+  for(var x=bw; x<w-bw; x+=step) ctx.fillText(strip[(x/step)|0 % strip.length], x, yTop);
+  // Inferior
+  var yBot = h - bw*0.9;
+  for(var x2=bw; x2<w-bw; x2+=step) ctx.fillText(strip[(x2/step)|0 % strip.length], x2, yBot);
+  ctx.restore();
+}
+
+function generateRecognitionFrame(cb) {
+  if(!reconOriginalDataUrl) return cb && cb(false, "Primero carga una fotografía.");
+  var canvas = document.getElementById("reconCanvas");
+  if(!canvas) return cb && cb(false, "Canvas no disponible.");
+  var ctx = canvas.getContext("2d");
+
+  var img = new Image();
+  img.onload = function() {
+    try {
+      var w = img.naturalWidth || img.width;
+      var h = img.naturalHeight || img.height;
+      var maxSide = 1200;
+      var scale = Math.min(1, maxSide / Math.max(w,h));
+      w = Math.max(1, Math.round(w*scale));
+      h = Math.max(1, Math.round(h*scale));
+      canvas.width = w;
+      canvas.height = h;
+
+      ctx.clearRect(0,0,w,h);
+      ctx.drawImage(img, 0,0,w,h);
+
+      // Confeti + marco con emojis (llamativo a seguridad)
+      drawConfetti(ctx, w, h, 140);
+
+      var bw = Math.max(16, Math.round(Math.min(w,h)*0.022));
+      // Borde exterior “glow”
+      ctx.save();
+      ctx.lineWidth = bw + 10;
+      ctx.strokeStyle = "rgba(255,255,255,0.45)";
+      ctx.strokeRect((bw+10)/2, (bw+10)/2, w-(bw+10), h-(bw+10));
+      ctx.restore();
+
+      // Marco principal (verde seguridad)
+      ctx.lineWidth = bw;
+      ctx.strokeStyle = "#22c55e";
+      ctx.strokeRect(bw/2, bw/2, w-bw, h-bw);
+
+      // Emojis en el borde (arriba/abajo)
+      drawEmojiBorder(ctx, w, h, bw);
+
+      // Banda superior “Seguridad Primero”
+      var topH = Math.max(90, Math.round(h*0.12));
+      ctx.fillStyle = "rgba(11,18,32,0.62)";
+      ctx.fillRect(0, 0, w, topH);
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillStyle="rgba(255,255,255,.98)";
+      ctx.font = "900 " + Math.round(topH*0.42) + "px system-ui";
+      ctx.fillText("🦺  SEGURIDAD PRIMERO  ✅", w/2, Math.round(topH*0.55));
+
+      // Banda inferior con mensaje
+      var bandH = Math.max(120, Math.round(h*0.22));
+      ctx.fillStyle = "rgba(11,18,32,0.72)";
+      ctx.fillRect(0, h-bandH, w, bandH);
+
+      var nombre = safeUpper(($("nombre") ? $("nombre").value : "") || "");
+      var planta = safeUpper((hdr && hdr.planta) ? hdr.planta : "");
+      var auditor = safeUpper((hdr && hdr.auditorLider) ? hdr.auditorLider : "");
+
+      var pad = Math.round(bandH*0.18);
+      ctx.textAlign="center";
+      ctx.fillStyle="rgba(255,255,255,.96)";
+
+      var y = h-bandH + pad - Math.round(bandH*0.06);
+      ctx.font = "900 " + Math.round(bandH*0.30) + "px system-ui";
+      ctx.fillText("🎉 ¡GRACIAS! 🎉", w/2, y + Math.round(bandH*0.22));
+
+      ctx.font = "800 " + Math.round(bandH*0.20) + "px system-ui";
+      var line1 = nombre ? nombre : "TRABAJADOR";
+      ctx.fillText(line1, w/2, y + Math.round(bandH*0.46));
+
+      ctx.font = "700 " + Math.round(bandH*0.16) + "px system-ui";
+      var msg = "por tu acto seguro";
+      ctx.fillText(msg, w/2, y + Math.round(bandH*0.60));
+
+      ctx.font = "600 " + Math.round(bandH*0.14) + "px system-ui";
+      var extra = (planta ? ("PLANTA: " + planta) : "") + (auditor ? (" | AUDITOR: " + auditor) : "");
+      var lines = wrapText(ctx, extra, w*0.90);
+      for(var i=0;i<lines.length && i<2;i++) {
+        ctx.fillText(lines[i], w/2, y + Math.round(bandH*0.66) + i*Math.round(bandH*0.11));
+      }
+
+      reconFramedDataUrl = canvas.toDataURL("image/png", 0.92);
+      if($("fotoPreviewMarco")) { $("fotoPreviewMarco").src = reconFramedDataUrl; $("fotoPreviewMarco").style.display="block"; }
+      // Ocultar el adjunto original una vez que ya hay vista previa con marco
+      if($("fotoRecon")) $("fotoRecon").style.display="none";
+      if($("fotoPreview")) $("fotoPreview").style.display="none";
+      if($("cambiarFotoRecon")) $("cambiarFotoRecon").style.display="inline-block";
+      if($("reconHint")) $("reconHint").innerHTML = "✅ Vista previa con marco lista. Puedes compartir o descargar.";
+      canvas.toBlob(function(blob){
+        reconFramedBlob = blob;
+        if($("compartirRecon")) $("compartirRecon").disabled = !blob;
+        if($("descargarRecon")) $("descargarRecon").disabled = !blob;
+        if(cb) cb(true);
+      }, "image/png", 0.92);
+
+    } catch(e) {
+      if(cb) cb(false, "No se pudo generar el marco.");
+    }
+  };
+  img.onerror = function(){ if(cb) cb(false, "No se pudo leer la imagen."); };
+  img.src = reconOriginalDataUrl;
+}
+
+function wireReconFeatures() {
+  if($("tipoRegistro") && !$("tipoRegistro")._wired) {
+    $("tipoRegistro")._wired=true;
+    $("tipoRegistro").onchange = function(){ setRegistroMode(); };
+  }
+  // Inicializar modo
+  setRegistroMode();
+
+  if($("fotoRecon") && !$("fotoRecon")._wired) {
+    $("fotoRecon")._wired=true;
+    $("fotoRecon").onchange = function(ev){
+      var file = ev.target.files && ev.target.files[0];
+      if(!file) return;
+      var fr = new FileReader();
+      fr.onload = function(){
+        reconOriginalDataUrl = String(fr.result||"");
+        if($("fotoPreview")) {
+          $("fotoPreview").src = reconOriginalDataUrl;
+          $("fotoPreview").style.display="block";
+          $("fotoPreview").style.border="4px solid rgba(34,197,94,.55)";
+          $("fotoPreview").style.borderRadius="14px";
+          $("fotoPreview").style.maxWidth="100%";
+          $("fotoPreview").style.marginTop="10px";
+        }
+        if($("fotoPreviewMarco")) { $("fotoPreviewMarco").style.display="none"; $("fotoPreviewMarco").src=""; $("fotoPreviewMarco").style.maxWidth="100%"; $("fotoPreviewMarco").style.border="4px solid rgba(255,255,255,.18)"; $("fotoPreviewMarco").style.borderRadius="14px"; }
+        if($("compartirRecon")) $("compartirRecon").disabled=true;
+        if($("descargarRecon")) $("descargarRecon").disabled=true;
+        // Generar marco automáticamente para que quede listo a compartir
+        generateRecognitionFrame(function(ok, msg){
+          if(ok) {
+            if($("reconHint")) $("reconHint").innerHTML = "✅ Reconocimiento listo. Puedes <b>compartir por WhatsApp</b> o descargar.";
+          } else {
+            if($("reconHint")) $("reconHint").innerHTML = "⚠️ " + escapeHtml(msg||"No se pudo generar el marco.");
+          }
+        });
+      };
+      fr.onerror=function(){ toast("❌ Error al leer la fotografía."); };
+      fr.readAsDataURL(file);
+    };
+  }
+
+  if($("cambiarFotoRecon") && !$("cambiarFotoRecon")._wired) {
+    $("cambiarFotoRecon")._wired=true;
+    $("cambiarFotoRecon").onclick = function(){
+      // Mostrar nuevamente el selector de foto para reemplazar la imagen
+      if($("fotoRecon")) $("fotoRecon").style.display="block";
+      if($("fotoPreview")) $("fotoPreview").style.display="block";
+      if($("fotoPreviewMarco")) { $("fotoPreviewMarco").style.display="none"; $("fotoPreviewMarco").src=""; }
+      if($("cambiarFotoRecon")) $("cambiarFotoRecon").style.display="none";
+      // Reset blobs para evitar compartir/guardar la anterior
+      reconOriginalDataUrl=null; reconFramedDataUrl=null; reconFramedBlob=null;
+      if($("compartirRecon")) $("compartirRecon").disabled=true;
+      if($("descargarRecon")) $("descargarRecon").disabled=true;
+      try { $("fotoRecon").value = ""; } catch(e){}
+      // Abrir selector
+      setTimeout(function(){ try { $("fotoRecon").click(); } catch(e){} }, 20);
+    };
+  }
+
+
+  if($("generarRecon") && !$("generarRecon")._wired) {
+    $("generarRecon")._wired=true;
+    $("generarRecon").onclick = function(){
+      generateRecognitionFrame(function(ok, msg){
+        if(ok) toast("✅ Marco generado.");
+        else toast("⚠️ " + (msg||"No se pudo generar el marco."));
+      });
+    };
+  }
+
+  if($("descargarRecon") && !$("descargarRecon")._wired) {
+    $("descargarRecon")._wired=true;
+    $("descargarRecon").onclick = function(){
+      if(!reconFramedBlob) return toast("⚠️ Primero carga una foto y genera el marco.");
+      var nombre = sanitizeFilename(($("nombre") ? $("nombre").value : "") || "TRABAJADOR");
+      var planta = sanitizeFilename((hdr && hdr.planta) ? hdr.planta : "PLANTA");
+      var filename = "Reconocimiento_" + planta + "_" + nombre + "_" + todayISO() + ".png";
+      downloadBlob(reconFramedBlob, filename);
+    };
+  }
+
+  if($("compartirRecon") && !$("compartirRecon")._wired) {
+    $("compartirRecon")._wired=true;
+    $("compartirRecon").onclick = function(){
+      if(!reconFramedBlob) return toast("⚠️ Primero carga una foto y genera el marco.");
+      var nombre = (($("nombre") ? $("nombre").value : "") || "el trabajador").trim();
+      var planta = (hdr && hdr.planta) ? hdr.planta : "";
+      var auditor = (hdr && hdr.auditorLider) ? hdr.auditorLider : "";
+      var text = "¡Gracias " + nombre + " por tu acto seguro" + (planta ? (" en " + planta) : "") + "!" + (auditor ? (" (Auditor: " + auditor + ")") : "");
+
+      var fileName = "Reconocimiento.png";
+      var file = new File([reconFramedBlob], fileName, {type:"image/png"});
+
+      if(navigator.share) {
+        try {
+          // Intentar compartir con archivo (WhatsApp aparece en el share sheet)
+          navigator.share({ title: "Reconocimiento", text: text, files: [file] })
+            .then(function(){ toast("📲 Compartido."); })
+            .catch(function(){
+              // Fallback: WhatsApp texto + descarga
+              downloadBlob(reconFramedBlob, "Reconocimiento.png");
+              window.open("https://wa.me/?text="+encodeURIComponent(text), "_blank");
+              toast("⬇️ Descargando imagen. Adjunta la foto en WhatsApp.");
+            });
+          return;
+        } catch(e) {}
+      }
+      // Fallback total
+      downloadBlob(reconFramedBlob, "Reconocimiento.png");
+      window.open("https://wa.me/?text="+encodeURIComponent(text), "_blank");
+      toast("⬇️ Descargando imagen. Adjunta la foto en WhatsApp.");
+    };
+  }
+}
+
+/* ========= Exportación Registros (Excel/JSON) ========= */
+function makeCSV(rows, cols) {
+  function esc(v) {
+    var s = String(v===undefined || v===null ? "" : v);
+    s = s.replace(/"/g,'""');
+    return '"' + s + '"';
+  }
+  var out=[];
+  out.push(cols.map(esc).join(","));
+  for(var i=0;i<rows.length;i++) {
+    var r = rows[i];
+    var line=[];
+    for(var j=0;j<cols.length;j++) line.push(esc(r[cols[j]]));
+    out.push(line.join(","));
+  }
+  return out.join("\n");
+}
+
+function exportRegistrosXlsx() {
+  var rows = applyFilters(db);
+  if(!rows || rows.length===0) return toast("⚠️ No hay registros para exportar (revisa filtros).");
+
+  var iasMap = buildIASMap(db);
+  var cols = (CATALOG && Array.isArray(CATALOG.headers)) ? CATALOG.headers.slice() : [];
+  // columnas extra útiles
+  if(cols.indexOf("TIPO OBSERVACION")===-1) cols.push("TIPO OBSERVACION");
+  if(cols.indexOf("AUDIT ID")===-1) cols.push("AUDIT ID");
+  if(cols.indexOf("IAS AUDITORIA")===-1) cols.push("IAS AUDITORIA");
+
+  // construir dataset
+  var data=[];
+  for(var i=0;i<rows.length;i++) {
+    var r=rows[i];
+    var o={};
+    for(var j=0;j<cols.length;j++) {
+      var c=cols[j];
+      if(c==="TIPO OBSERVACION") o[c] = r._tipoObs || "";
+      else if(c==="AUDIT ID") o[c] = r._auditId || "";
+      else if(c==="IAS AUDITORIA") {
+        var v = iasMap[String(r._auditId||"")];
+        o[c] = (v===undefined) ? "" : (Number(v).toFixed(1) + "%");
+      }
+      else o[c] = (r[c]!==undefined && r[c]!==null) ? r[c] : "";
+    }
+    data.push(o);
+  }
+
+  var name = "AE_Registros_" + todayISO() + ".xlsx";
+  if(window.XLSX && XLSX.utils && XLSX.writeFile) {
+    try {
+      var ws = XLSX.utils.json_to_sheet(data, {header: cols});
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Registros");
+      XLSX.writeFile(wb, name);
+      toast("✅ Excel exportado.");
+      return;
+    } catch(e) {
+      // fallback CSV
+    }
+  }
+  var csv = makeCSV(data, cols);
+  downloadBlob(new Blob([csv], {type:"text/csv;charset=utf-8"}), name.replace(/\.xlsx$/i,".csv"));
+  toast("✅ Exportado como CSV (Excel lo abre).");
+}
+
+function exportRegistrosJson() {
+  var rows = applyFilters(db);
+  if(!rows || rows.length===0) return toast("⚠️ No hay registros para exportar (revisa filtros).");
+  var payload = { schema:"AE_DB_v1", exportedAt:new Date().toISOString(), rows: rows };
+  var name = "AE_Registros_" + todayISO() + ".json";
+  downloadBlob(new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"}), name);
+  toast("✅ JSON exportado.");
+
+/* ========= Exportación de auditoría a PDF (con fotos de reconocimiento) ========= */
+function listAuditSummaries() {
+  var map={};
+  for(var i=0;i<db.length;i++) {
+    var r=db[i];
+    if(!r) continue;
+    var id=String(r._auditId||"");
+    if(!id) continue;
+    if(!map[id]) {
+      map[id]={
+        id:id,
+        fecha:String(r["FECHA AUDITORIA"]||""),
+        planta:String(r["PLANTA"]||""),
+        auditor:String(r["AUDITOR LIDER"]||""),
+        area:String(r["AREA"]||"")
+      };
+    }
+  }
+  var arr=[];
+  for(var k in map) if(map.hasOwnProperty(k)) arr.push(map[k]);
+  arr.sort(function(a,b){
+    var fa=a.fecha||"", fb=b.fecha||"";
+    if(fa===fb) return (b.id||"").localeCompare(a.id||"");
+    return fb.localeCompare(fa);
+  });
+  return arr;
+}
+
+
+
+function refreshPdfAuditSelect() {
+  var sel = $("pdfAuditSelect");
+  if(!sel) return;
+
+  var prev = sel.value || localStorage.getItem("PDF_AUDIT_SEL") || "";
+  sel.innerHTML="";
+  option(sel,"","(Selecciona)");
+
+  var items = listAuditSummaries();
+  for(var i=0;i<items.length;i++) {
+    var it = items[i];
+    var tail = (it.id && it.id.length>6) ? it.id.slice(-6) : it.id;
+    var label = (it.fecha||"") + " | " + (it.planta||"") + " | " + (it.auditor||"") + " | " + tail;
+    option(sel, it.id, label);
+  }
+
+  function hasVal(v){
+    for(var k=0;k<sel.options.length;k++) if(sel.options[k].value===v) return true;
+    return false;
+  }
+
+  if(prev && hasVal(prev)) sel.value = prev;
+  else if(hdr && hdr.auditId && hasVal(hdr.auditId)) sel.value = hdr.auditId;
+  else if(items && items.length>0 && hasVal(items[0].id)) sel.value = items[0].id;
+  else sel.value = "";
+}
+
+function openPrintableAudit(auditId, rows, meta) {
+  try {
+    var logo = "";
+    try { logo = localStorage.getItem(LOGO_KEY) || ""; } catch(e){}
+    var fecha = (meta && meta.fecha) ? meta.fecha : "";
+    var planta = (meta && meta.planta) ? meta.planta : "";
+    var area = (meta && meta.area) ? meta.area : "";
+    var auditor = (meta && meta.auditor) ? meta.auditor : "";
+    var ias = (meta && typeof meta.ias==="number") ? meta.ias : computeIAS(rows);
+
+    var title = "Auditoría Efectiva (AE)";
+    var safe = function(x){ return escapeHtml(String(x||"")); };
+
+    var html = "";
+    html += "<!doctype html><html><head><meta charset='utf-8'>";
+    html += "<title>"+safe(title)+"</title>";
+    html += "<style>";
+    html += "body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#111}";
+    html += ".hdr{display:flex;gap:16px;align-items:center;margin-bottom:12px}";
+    html += ".logo{width:140px;max-height:70px;object-fit:contain}";
+    html += "h1{font-size:18px;margin:0}";
+    html += ".meta{font-size:12px;margin-top:6px}";
+    html += ".meta b{display:inline-block;min-width:110px}";
+    html += "table{width:100%;border-collapse:collapse;margin-top:14px;font-size:11px}";
+    html += "th,td{border:1px solid #333;padding:6px;vertical-align:top}";
+    html += "th{background:#eee}";
+    html += ".small{font-size:10px;color:#333}";
+    html += ".photos{margin-top:16px}";
+    html += ".photoCard{page-break-inside:avoid;border:1px solid #333;padding:10px;margin:10px 0}";
+    html += ".photoCard img{max-width:100%;height:auto;border:1px solid #aaa}";
+    html += "@media print{.noprint{display:none}}";
+    html += "</style></head><body>";
+
+    html += "<div class='hdr'>";
+    if(logo && String(logo).indexOf('data:image')===0) {
+      html += "<img class='logo' src='"+logo+"'/>";
+    } else {
+      html += "<div style='font-weight:700;font-size:16px'>MOCTEZUMA</div>";
+    }
+    html += "<div><h1>"+safe(title)+"</h1>";
+    html += "<div class='meta'><div><b>Audit ID:</b> "+safe(auditId)+"</div>";
+    html += "<div><b>Fecha auditoría:</b> "+safe(fecha)+"</div>";
+    html += "<div><b>Planta:</b> "+safe(planta)+"</div>";
+    html += "<div><b>Área:</b> "+safe(area)+"</div>";
+    html += "<div><b>Auditor líder:</b> "+safe(auditor)+"</div>";
+    html += "<div><b>IAS:</b> "+safe(ias.toFixed(1))+"% ("+safe(rows.length)+")</div>";
+    html += "</div></div></div>";
+
+    // Tabla (columnas principales)
+    html += "<table><thead><tr>";
+    var cols = ["OBSERVACION","NOMBRE","Area a la que pertenece la persona abordada","ACTO INSEGURO OBSERVADO","FS","CATEGORIA PRIMARIA","CATEGORIA SECUNDARIA","CAUSA PRIMARIA","CAUSA SECUNDARIA","COMENTARIOS / OBSERVACIONES"];
+    for(var c=0;c<cols.length;c++) html += "<th>"+safe(cols[c])+"</th>";
+    html += "</tr></thead><tbody>";
+
+    for(var i=0;i<rows.length;i++) {
+      var r = rows[i]||{};
+      html += "<tr>";
+      for(var c2=0;c2<cols.length;c2++) {
+        var k = cols[c2];
+        var v = (r[k]!==undefined && r[k]!==null) ? r[k] : "";
+        html += "<td>"+safe(v)+"</td>";
+      }
+      html += "</tr>";
+    }
+    html += "</tbody></table>";
+
+    // Fotos de reconocimiento
+    var hasPhotos=false;
+    for(var j=0;j<rows.length;j++) {
+      var img = rows[j] ? rows[j]["FOTO RECONOCIMIENTO"] : "";
+      if(img && String(img).indexOf("data:image")===0) { hasPhotos=true; break; }
+    }
+    if(hasPhotos) {
+      html += "<div class='photos'><h2 style='font-size:14px;margin:18px 0 6px'>Fotos de reconocimiento</h2>";
+      for(var j2=0;j2<rows.length;j2++) {
+        var rr = rows[j2]||{};
+        var img2 = rr["FOTO RECONOCIMIENTO"];
+        if(img2 && String(img2).indexOf("data:image")===0) {
+          html += "<div class='photoCard'>";
+          html += "<div class='small'><b>#</b> "+(j2+1)+" — <b>Nombre:</b> "+safe(rr["NOMBRE"]||"")+
+                  " — <b>Planta:</b> "+safe(rr["PLANTA"]||"")+"</div>";
+          html += "<img src='"+img2+"'/>";
+          html += "</div>";
+        }
+      }
+      html += "</div>";
+    }
+
+    html += "<div class='noprint' style='margin-top:14px;font-size:12px;color:#333'>Tip: en la ventana de impresión elige <b>Guardar como PDF</b>.</div>";
+    html += "</body></html>";
+
+    var w = window.open("", "_blank");
+    if(!w) { toast("⚠️ El navegador bloqueó la ventana emergente. Permite popups para exportar PDF."); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    setTimeout(function(){ try { w.focus(); w.print(); } catch(e){} }, 450);
+  } catch(e) {
+    toast("⚠️ No se pudo generar el PDF.");
+  }
+}
+
+function exportSelectedAuditPdf() {
+  try { refreshPdfAuditSelect(); } catch(e) {}
+  var sel = $("pdfAuditSelect");
+  var id = (sel && sel.value) ? sel.value : "";
+  if(!id && hdr && hdr.auditId) id = hdr.auditId;
+  // Si no hay selección explícita, exportar la auditoría más reciente disponible
+  if(!id) {
+    var items = listAuditSummaries();
+    if(items && items.length>0) id = items[0].id;
+    try { if(sel && id) sel.value = id; } catch(e){}
+  }
+  if(!id) return toast("⚠️ Selecciona una auditoría (Audit ID) para exportar en PDF.");
+
+  var rows = getRowsByAuditId(id);
+  if(!rows || rows.length===0) return toast("⚠️ No hay registros para esa auditoría.");
+
+  // Header derivado de los registros
+  var first = rows[0] || {};
+  var fecha = String(first["FECHA AUDITORIA"]||"");
+  var planta = String(first["PLANTA"]||"");
+  var area = String(first["AREA"]||"");
+  var auditor = String(first["AUDITOR LIDER"]||"");
+  var ias = computeIAS(rows);
+
+  if(!(window.jspdf && window.jspdf.jsPDF)) {
+    // Fallback SIN librerías: abrir vista para imprimir y guardar como PDF
+    openPrintableAudit(id, rows, {fecha:fecha, planta:planta, area:area, auditor:auditor, ias:ias});
+    toast("📄 Se abrió la vista de impresión. Elige 'Guardar como PDF'.");
+    return;
+  }
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({orientation:"p", unit:"pt", format:"a4"});
+  var pageW = doc.internal.pageSize.getWidth();
+  var pageH = doc.internal.pageSize.getHeight();
+  var margin = 42;
+
+  doc.setFontSize(15);
+  doc.text("Auditoría Efectiva (AE) — Reporte", margin, 48);
+
+  doc.setFontSize(10);
+  var y = 70;
+  var line = function(t){ doc.text(t, margin, y); y += 14; };
+  line("Fecha auditoría: " + (fecha||"—"));
+  line("Planta: " + (planta||"—"));
+  line("Área auditada: " + (area||"—"));
+  line("Auditor líder: " + (auditor||"—"));
+  line("Audit ID: " + id);
+  line("IAS: " + ias.toFixed(1) + "%  (" + rows.length + " registros)");
+
+  // Tabla
+  var head = [["#", "Obs", "Tipo", "Nombre", "Área persona", "Acto observado", "FS", "Categoría (P)", "Causa (P)", "Comentarios"]];
+  var body = [];
+  for(var i=0;i<rows.length;i++) {
+    var r = rows[i];
+    var obs = String(r["OBSERVACION"]||"");
+    var obsLbl = (obs==="1") ? "Seguro" : (obs==="2" ? "Inseguro" : obs);
+    var acto = String(r["ACTO INSEGURO OBSERVADO"]||"").replace(/\s+/g," ").trim();
+    if(acto.length>160) acto = acto.slice(0,160) + "…";
+    var com = String(r["OBSERVACIONES"]||"").replace(/\s+/g," ").trim();
+    if(com.length>140) com = com.slice(0,140) + "…";
+    body.push([
+      String(i+1),
+      obsLbl,
+      String(r._tipoObs||""),
+      String(r["NOMBRE"]||""),
+      String(r["Area a la que pertenece la persona abordada"]||""),
+      acto,
+      String(r["FS"]||""),
+      String(r["CATEGORIA PRIMARIA"]||""),
+      String(r["CAUSA PRIMARIA"]||""),
+      com
+    ]);
+  }
+
+  if(doc.autoTable) {
+    doc.autoTable({
+      head: head,
+      body: body,
+      startY: y + 6,
+      styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
+      headStyles: { fontStyle: "bold" },
+      margin: { left: margin, right: margin }
+    });
+    y = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 18 : y + 18;
+  } else {
+    y += 12;
+    doc.setFontSize(10);
+    doc.text("⚠️ Tabla no disponible (autoTable).", margin, y);
+    y += 14;
+  }
+
+  // Fotos de reconocimiento (si existen)
+  var photos = [];
+  for(var p=0;p<rows.length;p++) {
+    var rr = rows[p];
+    var img = rr["FOTO RECONOCIMIENTO"];
+    if(img && String(img).indexOf("data:image")===0) photos.push({idx:p+1, nombre:String(rr["NOMBRE"]||""), img:String(img)});
+  }
+
+  for(var f=0;f<photos.length;f++) {
+    var ph = photos[f];
+    // Nueva página si no cabe
+    if(y > pageH - 220) { doc.addPage(); y = 48; }
+
+    doc.setFontSize(11);
+    doc.text("Foto reconocimiento — Registro #" + ph.idx + (ph.nombre ? (" ("+ph.nombre+")") : ""), margin, y);
+    y += 10;
+
+    try {
+      var props = doc.getImageProperties(ph.img);
+      var maxW = pageW - margin*2;
+      var maxH = pageH - y - margin;
+      var ratio = Math.min(maxW/props.width, maxH/props.height);
+      var w = props.width * ratio;
+      var h = props.height * ratio;
+      doc.addImage(ph.img, "PNG", margin, y+8, w, h);
+      y += h + 20;
+    } catch(e) {
+      doc.setFontSize(10);
+      doc.text("⚠️ No se pudo incrustar la imagen del registro #" + ph.idx, margin, y+16);
+      y += 28;
+    }
+  }
+
+  var fn = "AE_" + sanitizeFilename(fecha||todayISO()) + "_" + sanitizeFilename(planta||"PLANTA") + "_" + sanitizeFilename(auditor||"AUDITOR") + ".pdf";
+  doc.save(fn);
+  toast("✅ PDF generado: <span class='mono'>"+fn+"</span>");
+}
+
+
+}
+
+
+
+function _stripAccents(s) {
+  if(!s) return "";
+  var map = {
+    "Á":"A","É":"E","Í":"I","Ó":"O","Ú":"U","Ü":"U","Ñ":"N",
+    "á":"a","é":"e","í":"i","ó":"o","ú":"u","ü":"u","ñ":"n"
+  };
+  var out="";
+  for(var i=0;i<s.length;i++){
+    var ch = s.charAt(i);
+    out += (map[ch]!==undefined) ? map[ch] : ch;
+  }
+  return out;
+}
+function sanitizeFilename(s) {
+  s = _stripAccents(String(s||""));
+  s = s.replace(/\s+/g, "_");
+  s = s.replace(/[^a-zA-Z0-9_\-\.]/g, "_");
+  s = s.replace(/_+/g, "_");
+  s = s.replace(/^_+|_+$/g, "");
+  if(!s) s = "AE";
+  return s;
+}
+
+var LAST_EXPORT = null;
+function escapeAttr(s){
+  return String(s||"")
+    .replace(/&/g,"&amp;")
+    .replace(/"/g,"&quot;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;");
+}
+function downloadBlob(blob, filename) {
+  try {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+
+    try { a.click(); }
+    catch(e) {
+      try { a.dispatchEvent(new MouseEvent('click', {bubbles:true,cancelable:true,view:window})); } catch(e2){}
+    }
+
+    setTimeout(function(){
+      try { document.body.removeChild(a); } catch(e){}
+    }, 250);
+
+    // Mantener el objectURL un rato por compatibilidad en móviles
+    setTimeout(function(){ try { URL.revokeObjectURL(url); } catch(e){} }, 60000);
+    return url;
+  } catch(e) {
+    toast("⚠️ No se pudo descargar el archivo.");
+    return null;
+  }
+}
+function getRowsByAuditId(auditId) {
+  var out=[];
+  for(var i=0;i<db.length;i++) {
+    if(db[i] && db[i]._auditId===auditId) out.push(db[i]);
+  }
+  return out;
+}
+function buildAuditPayload(h, rows) {
+  var seguros=0, inseguros=0, fs3=0;
+  for(var i=0;i<rows.length;i++) {
+    if(String(rows[i]["OBSERVACION"])==="1") seguros++; else inseguros++;
+    if(String(rows[i]["FS"])==="3") fs3++;
+  }
+  var ias = computeIAS(rows);
+  return {
+    schema: "AE_AUDIT_v1",
+    exportedAt: new Date().toISOString(),
+    audit: {
+      auditId: h.auditId,
+      planta: h.planta,
+      area: h.area,
+      fechaAuditoria: h.fechaAuditoria,
+      fechaRegistro: h.fechaRegistro,
+      horaRegistro: h.horaRegistro,
+      horaInicio: h.horaInicio,
+      horaTermino: h.horaTermino,
+      tipoRecorrido: h.tipoRecorrido,
+      auditorLider: h.auditorLider,
+      puestoLider: h.puestoLider,
+      tipoAELider: h.tipoAELider,
+      gerenciaLider: h.gerenciaLider,
+      auditorAcomp: h.auditorAcomp,
+      puestoAcomp: h.puestoAcomp,
+      tipoAEAcomp: h.tipoAEAcomp
+    },
+    metrics: {
+      total: rows.length,
+      seguros: seguros,
+      inseguros: inseguros,
+      fsAlto3: fs3,
+      iasPct: Math.round(ias*100)/100
+    },
+    rows: rows
+  };
+}
+
+function exportCurrentAuditJson(tryShare) {
+  if(!hdr || !hdr.auditId) { toast("⚠️ Primero guarda el encabezado."); return; }
+  var rows = getRowsByAuditId(hdr.auditId);
+  if(!rows || rows.length===0) { toast("⚠️ No hay registros para esta auditoría."); return; }
+
+  // Asegurar IAS actualizado antes de exportar
+  var ias = computeIAS(rows);
+  try { hdr.iasPct = Number(ias.toFixed(2)); saveHDR(); } catch(e){}
+
+  var payload = buildAuditPayload(hdr, rows);
+
+  var date = normalizeYMD(hdr.fechaAuditoria || todayISO());
+  if(!date) date = todayISO();
+  var year = String(date).slice(0,4);
+
+  var auditor = (hdr.auditorLider || "AUDITOR");
+  var planta  = (hdr.planta || "PLANTA");
+
+  // Formato solicitado: AE-YYYY_YYYY-MM-DD_AUDITOR_PLANTA.json
+  var filename = "AE-" + sanitizeFilename(year) + "_" + sanitizeFilename(date) + "_" +
+                 sanitizeFilename(auditor) + "_" + sanitizeFilename(planta) + ".json";
+
+  var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json;charset=utf-8"});
+
+  // 1) Descargar (lo más compatible para resguardo/análisis)
+  var url = downloadBlob(blob, filename);
+  if(url) {
+    toast("✅ AE exportada: <span class='mono'>"+escapeHtml(filename)+"</span>.");
+  } else {
+    // Fallback adicional: abrir el JSON en una pestaña (para copiar/guardar)
+    try {
+      var dataUrl = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+      window.open(dataUrl, "_blank");
+      toast("⚠️ No se pudo descargar. Se abrió el JSON para copiar/guardar.");
+    } catch(e) {
+      toast("⚠️ No se pudo exportar el JSON.");
+    }
+  }
+
+  // 2) Opcional: Compartir para enviarlo a Seguridad (no bloquea la descarga)
+  if(tryShare && navigator && navigator.share) {
+    try {
+      var file = new File([blob], filename, {type:"application/json"});
+      if(!navigator.canShare || navigator.canShare({files:[file]})) {
+        var txt = "AE-" + year + " " + date + " — " + planta + " — " + auditor;
+        var p = navigator.share({title:"Auditoría Efectiva (AE)", text: txt, files:[file]});
+        if(p && p.then) { p.catch(function(){ /* ya quedó descargada */ }); }
+      }
+    } catch(e) { /* ya quedó descargada */ }
+  }
+}
+
+/* ========= IMPORTACIÓN AE (JSON de auditoría) ========= */
+
+function setImportAuditStatus(txt) {
+  if($("importAuditStatus")) $("importAuditStatus").value = txt || "";
+}
+
+function isPlainObject(x) {
+  return x && typeof x==="object" && !Array.isArray(x);
+}
+
+function ensureCatalogHasImportedAudit(audit) {
+  // Asegura que planta/área/auditores existan en el catálogo para poder filtrar y seleccionarlos
+  var base = loadCatalogOverride();
+  if(!base) base = { plants: CATALOG_RAW.plants.slice(), areas: CATALOG_RAW.areas.slice(), personAreas: (CATALOG_RAW.personAreas||[]).slice(), auditors: CATALOG_RAW.auditors.slice() };
+  base.plants = Array.isArray(base.plants) ? base.plants.slice() : CATALOG_RAW.plants.slice();
+  base.areas  = Array.isArray(base.areas)  ? base.areas.slice()  : CATALOG_RAW.areas.slice();
+  base.auditors = Array.isArray(base.auditors) ? base.auditors.slice() : CATALOG_RAW.auditors.slice();
+
+  var changed = false;
+
+  function hasAud(name) {
+    for(var i=0;i<base.auditors.length;i++) if(String(base.auditors[i].name||"")===String(name||"")) return true;
+    return false;
+  }
+
+  if(audit && audit.planta && base.plants.indexOf(audit.planta)===-1) { base.plants.push(audit.planta); changed=true; }
+  if(audit && audit.area && base.areas.indexOf(audit.area)===-1) { base.areas.push(audit.area); changed=true; }
+
+  if(audit && audit.auditorLider && !hasAud(audit.auditorLider)) {
+    base.auditors.push({
+      name: audit.auditorLider,
+      tipo: audit.tipoAELider || "",
+      area: (String(audit.tipoAELider||"").toUpperCase()==="HSE") ? "SEGURIDAD" : "",
+      puesto: audit.puestoLider || ""
+    });
+    changed=true;
+  }
+  if(audit && audit.auditorAcomp && audit.auditorAcomp!=="N/A" && !hasAud(audit.auditorAcomp)) {
+    base.auditors.push({
+      name: audit.auditorAcomp,
+      tipo: audit.tipoAEAcomp || "",
+      area: (String(audit.tipoAEAcomp||"").toUpperCase()==="HSE") ? "SEGURIDAD" : "",
+      puesto: audit.puestoAcomp || ""
+    });
+    changed=true;
+  }
+
+  if(changed) {
+    saveCatalogOverride(base);
+    refreshCatalogEverywhere();
+  }
+}
+
+function importAuditPayload(payload, sourceName) {
+  if(!payload) return {ok:false, msg:"Archivo vacío o ilegible."};
+  if(String(payload.schema||"")!=="AE_AUDIT_v1") {
+    return {ok:false, msg:"El JSON no corresponde a una AE exportada (schema esperado: AE_AUDIT_v1)."};
+  }
+  if(!isPlainObject(payload.audit)) return {ok:false, msg:"Estructura inválida: falta 'audit'."};
+  if(!Array.isArray(payload.rows)) return {ok:false, msg:"Estructura inválida: falta 'rows' (arreglo de registros)."};
+  if(payload.rows.length===0) return {ok:false, msg:"La AE no trae registros (rows=0)."};
+
+  var audit = payload.audit;
+  ensureCatalogHasImportedAudit(audit);
+
+  var incomingAuditId = String(audit.auditId || "");
+  if(!incomingAuditId) incomingAuditId = "IMP_" + uid();
+
+  // Evitar mezclar auditorías si ya existe el auditId en la base local
+  var auditId = incomingAuditId;
+  for(var i=0;i<db.length;i++) {
+    if(db[i] && String(db[i]._auditId||"")===auditId) {
+      auditId = incomingAuditId + "_IMP_" + String(Date.now());
+      break;
+    }
+  }
+
+  var added = 0;
+  // Insertar al inicio manteniendo el orden original (último al inicio)
+  for(var r=payload.rows.length-1; r>=0; r--) {
+    var row = payload.rows[r];
+    if(!isPlainObject(row)) continue;
+
+    // Clonar y normalizar
+    var nr = JSON.parse(JSON.stringify(row));
+
+    // Normalizar mínimos (por seguridad)
+    if(!nr["PLANTA"] && audit.planta) nr["PLANTA"]=audit.planta;
+    if(!nr["AREA"] && audit.area) nr["AREA"]=audit.area;
+    if(!nr["AUDITOR LIDER"] && audit.auditorLider) nr["AUDITOR LIDER"]=audit.auditorLider;
+    if(!nr["PUESTO AUDITOR LIDER"] && audit.puestoLider) nr["PUESTO AUDITOR LIDER"]=audit.puestoLider;
+
+    nr._id = uid();                     // siempre nuevo id local
+    nr._auditId = auditId;              // auditId consistente
+    if(!nr._ts) nr._ts = new Date().toISOString();
+    if(!nr._horaRegistro) nr._horaRegistro = nowHHMMSS();
+    nr._importedAt = new Date().toISOString();
+    nr._importSource = String(sourceName||"");
+
+    db.unshift(nr);
+    added++;
+  }
+
+  if(added===0) return {ok:false, msg:"No se encontraron registros válidos dentro del JSON."};
+  saveDB();
+  // refrescar vistas si están abiertas
+  if($("tab-registros") && !$("tab-registros").classList.contains("hide")) renderTable();
+  if($("tab-dashboard") && !$("tab-dashboard").classList.contains("hide")) renderDashboard();
+
+  return {ok:true, msg:"AE importada correctamente.", added: added, auditId: auditId};
+}
+
+function wireImportAuditJson() {
+  var btn = $("btnImportAuditJson");
+  var inp = $("importAuditJson");
+  if(btn && !btn._wired) {
+    btn._wired=true;
+    btn.onclick = function(){
+      if(!requireAdminAuth()) return;
+      if(inp) { inp.value=""; inp.click(); }
+    };
+  }
+  if(inp && !inp._wired) {
+    inp._wired=true;
+    inp.onchange = function(ev){
+      var file = ev.target.files && ev.target.files[0];
+      if(!file) return;
+      setImportAuditStatus("Leyendo archivo…");
+      toast("📥 Importando AE…");
+
+      var fr = new FileReader();
+      fr.onload = function() {
+        try {
+          var txt = String(fr.result||"");
+          var payload = JSON.parse(txt);
+          var res = importAuditPayload(payload, file.name);
+          if(res.ok) {
+            setImportAuditStatus("Cargado ("+res.added+" registros)");
+            toast("✅ Cargado satisfactoriamente: <b>"+res.added+"</b> registros");
+          } else {
+            setImportAuditStatus("Error");
+            toast("❌ Error al importar: "+escapeHtml(res.msg));
+          }
+        } catch(e) {
+          setImportAuditStatus("Error");
+          toast("❌ Error al importar: JSON inválido.");
+        }
+      };
+      fr.onerror = function() {
+        setImportAuditStatus("Error");
+        toast("❌ Error al leer el archivo.");
+      };
+      fr.readAsText(file);
+    };
+  }
+}
+
+
+/* ========= IMPORTACIÓN AE (Registros) ========= */
+
+function setRegImportJsonStatus(txt) {
+  var el = $("regImportJsonStatus");
+  if(el) el.innerHTML = txt || "";
+}
+
+function wireRegImportAuditJson() {
+  var btn = $("btnRegImportJsonLoad");
+  var inp = $("regImportJson");
+  if(btn && !btn._wired) {
+    btn._wired = true;
+    btn.onclick = function() {
+      var file = inp && inp.files && inp.files[0];
+      if(!file) {
+        setRegImportJsonStatus("⚠️ Selecciona un archivo <span class='mono'>.json</span> y pulsa <b>Cargar</b>.");
+        return toast("⚠️ Selecciona primero un archivo JSON.");
+      }
+
+      setRegImportJsonStatus("Leyendo archivo…");
+      toast("📥 Importando AE…");
+
+      var fr = new FileReader();
+      fr.onload = function() {
+        try {
+          var txt = String(fr.result||"");
+          var payload = JSON.parse(txt);
+          var res = importAuditPayload(payload, file.name);
+          if(res.ok) {
+            setRegImportJsonStatus("✅ Cargado: <b>"+res.added+"</b> registros. Actualizando vista…");
+            toast("✅ Cargado satisfactoriamente: <b>"+res.added+"</b> registros");
+            initCatalogs();
+            renderTable();
+            renderDashboard();
+            updateHeaderAuditStats();
+  refreshPdfAuditSelect();
+          } else {
+            setRegImportJsonStatus("❌ Error: "+escapeHtml(res.msg));
+            toast("❌ Error al importar: "+escapeHtml(res.msg));
+          }
+        } catch(e) {
+          setRegImportJsonStatus("❌ Error: JSON inválido.");
+          toast("❌ Error al importar: JSON inválido.");
+        }
+      };
+      fr.onerror = function() {
+        setRegImportJsonStatus("❌ Error al leer el archivo.");
+        toast("❌ Error al leer el archivo.");
+      };
+      fr.readAsText(file);
+    };
+  }
+}
+
+
+function readRegistroFromUI() {
+  if(!hdr) return {ok:false, msg:"Primero guarda el encabezado."};
+  var tipoObs = $("tipoObs") ? $("tipoObs").value : "Seguridad";
+  var obs = $("tipoRegistro") ? $("tipoRegistro").value : "1";
+  var nombre = $("nombre") ? ($("nombre").value||"").trim() : "";
+  var acto = $("acto") ? ($("acto").value||"").trim() : "";
+  if(!nombre) return {ok:false, msg:"Indica el nombre (o N/A)."};
+  if(!acto) return {ok:false, msg:"Describe el acto/observación."};
+  var fs = $("fs") ? $("fs").value : "";
+  if(obs==="2") {
+    if(!($("catPrim") && $("catPrim").value) || !($("catSec") && $("catSec").value)) return {ok:false, msg:"Selecciona categoría primaria/secundaria."};
+    if(!($("causaPrim") && $("causaPrim").value) || !($("causaSec") && $("causaSec").value)) return {ok:false, msg:"Selecciona causa primaria/secundaria."};
+    if(!fs) return {ok:false, msg:"Selecciona FS (1,2,3)."};
+  }
+  var tipoPersonal = $("tipoPersonal") ? $("tipoPersonal").value : "Interno";
+  var rec={};
+  rec["PLANTA"]=hdr.planta;
+  rec["AREA"]=hdr.area;
+  rec["FECHA AUDITORIA"]=hdr.fechaAuditoria;
+  rec["FECHA REGISTRO"]=todayISO();
+  rec["HORA INICIO"]=hdr.horaInicio;
+  rec["HORA TERMINO"]=hdr.horaTermino||"";
+  rec["AUDITOR LIDER"]=hdr.auditorLider;
+  rec["PUESTO AUDITOR LIDER"]=hdr.puestoLider||"";
+  rec["AUDITOR ACOMPAÑANTE"]=hdr.auditorAcomp||"";
+  rec["PUESTO AUDITOR ACOMPAÑANTE"]=hdr.puestoAcomp||"";
+  rec["OBSERVACION"]=Number(obs);
+  rec["NOMBRE"]=nombre;
+  rec["Area a la que pertenece la persona abordada"] = $("areaPersona") ? ($("areaPersona").value||"").trim() : "";
+  rec["PERSONAL INTERNO"] = (tipoPersonal==="Interno") ? "SI" : "";
+  rec["PERSONAL EXTERNO"] = (tipoPersonal==="Externo") ? "SI" : "";
+  rec["Nombre de la empresa"] = (tipoPersonal==="Externo" && $("empresa")) ? ($("empresa").value||"").trim() : "";
+  rec["ACTO INSEGURO OBSERVADO"]=acto;
+  rec["FS"]=fs;
+  rec["CATEGORIA PRIMARIA"]= (obs==="2" && $("catPrim")) ? $("catPrim").value : "";
+  rec["CATEGORIA SECUNDARIA"]= (obs==="2" && $("catSec")) ? $("catSec").value : "";
+  rec["CAUSA PRIMARIA"]= (obs==="2" && $("causaPrim")) ? $("causaPrim").value : "";
+  rec["CAUSA SECUNDARIA"]= (obs==="2" && $("causaSec")) ? $("causaSec").value : "";
+  rec["No. De personas observadas"]="1";
+  rec["OBSERVACIONES"]= $("obsAdicional") ? ($("obsAdicional").value||"").trim() : "";
+
+  // Foto de reconocimiento (acto seguro)
+  if(String(obs)==="1" && reconFramedDataUrl) {
+    rec["FOTO RECONOCIMIENTO"] = reconFramedDataUrl;
+  }
+
+  // headers exactos
+  var out={};
+  var headers = CATALOG.headers;
+  var tipoCount=0, puestoCount=0;
+  for(var i=0;i<headers.length;i++) {
+    var h=headers[i];
+    if(h==="TIPO AE") {
+      tipoCount++;
+      out[h] = (tipoCount===1) ? (hdr.tipoAELider||"") : (hdr.tipoAEAcomp||"");
+    } else if(h==="Puesto") {
+      puestoCount++;
+      out[h] = (puestoCount===1) ? (tipoPersonal==="Interno" && $("puestoInterno") ? ($("puestoInterno").value||"").trim() : "") : (tipoPersonal==="Externo" && $("puestoExterno") ? ($("puestoExterno").value||"").trim() : "");
+    } else {
+      out[h] = (rec[h]!==undefined && rec[h]!==null) ? rec[h] : "";
+    }
+  }
+  out._id = uid();
+  out._ts = new Date().toISOString();
+  out._horaRegistro = nowHHMMSS();
+  out._tipoObs = tipoObs;
+  out._auditId = hdr.auditId;
+  return {ok:true, data:out};
+}
+
+
+function clearHeaderUI() {
+  // Resetea UI de encabezado (sin borrar la base)
+  if($("planta")) $("planta").value="";
+  if($("area")) $("area").value="";
+  if($("tipoRecorrido")) $("tipoRecorrido").value="Ordinario";
+
+  // Fechas/horas por defecto
+  if($("fechaAuditoria")) $("fechaAuditoria").value = todayISO();
+  if($("horaInicio")) $("horaInicio").value = nowHHMM();
+  if($("horaTermino")) $("horaTermino").value = "";
+
+  // Registro automático
+  if($("fechaRegistro")) $("fechaRegistro").value = todayISO();
+  if($("horaRegistro")) $("horaRegistro").value = nowHHMMSS();
+
+  // Auditores y autocompletados
+  if($("auditorLider")) $("auditorLider").value="";
+  if($("auditorAcomp")) $("auditorAcomp").value="";
+  if($("puestoLider")) $("puestoLider").value="";
+  if($("tipoAELider")) $("tipoAELider").value="";
+  if($("puestoAcomp")) $("puestoAcomp").value="";
+  if($("tipoAEAcomp")) $("tipoAEAcomp").value="";
+}
+
+function clearCaptureAll() {
+  // Limpia encabezado + registro (captura) en un solo botón
+  hdr = null;
+  try { localStorage.removeItem(HEADER_KEY); } catch(e){}
+  setStatus();
+  clearHeaderUI();
+  clearRegistroUI();
+  updateHeaderAuditStats();
+  toast("🧹 Captura limpiada (encabezado + registro).");
+}
+
+function clearRegistroUI() {
+  var ids=["nombre","areaPersona","puestoInterno","puestoExterno","empresa","acto","obsAdicional"];
+  for(var i=0;i<ids.length;i++) if($(ids[i])) $(ids[i]).value="";
+  if($("fs")) $("fs").value="";
+  if($("tipoRegistro")) $("tipoRegistro").value="1";
+  if($("tipoObs")) $("tipoObs").value="Seguridad";
+  if($("tipoPersonal")) $("tipoPersonal").value="Interno";
+  if($("nPersonas")) $("nPersonas").value="1";
+  if($("catPrim")) $("catPrim").value="";
+  if($("catSec")) { $("catSec").innerHTML=""; option($("catSec"),"", "(Selecciona primaria primero)"); }
+  if($("causaPrim")) $("causaPrim").value="";
+  if($("causaSec")) { $("causaSec").innerHTML=""; option($("causaSec"),"", "(Selecciona primaria primero)"); }
+  // reset reconocimiento
+  reconOriginalDataUrl=null; reconFramedDataUrl=null; reconFramedBlob=null;
+  if($("fotoRecon")) { $("fotoRecon").value=""; $("fotoRecon").style.display="block"; }
+  if($("cambiarFotoRecon")) $("cambiarFotoRecon").style.display="none";
+  if($("fotoPreview")) { $("fotoPreview").style.display="none"; $("fotoPreview").src=""; }
+  if($("fotoPreviewMarco")) { $("fotoPreviewMarco").style.display="none"; $("fotoPreviewMarco").src=""; }
+  if($("compartirRecon")) $("compartirRecon").disabled=true;
+  if($("descargarRecon")) $("descargarRecon").disabled=true;
+  if($("reconHint")) $("reconHint").innerHTML = "Después de generar, podrás compartir el reconocimiento.";
+  setRegistroMode();
+  syncPuestosByTipoPersonal();
+}
+
+function applyFilters(rows) {
+  var out=[];
+  var fPl = $("fPlanta") ? $("fPlanta").value : "";
+  var fAr = $("fArea") ? $("fArea").value : "";
+  var fArP = $("fAreaPersona") ? $("fAreaPersona").value : "";
+  var fAu = $("fAuditor") ? $("fAuditor").value : "";
+  var fTipo = $("fTipo") ? $("fTipo").value : "";
+  var fTipoObs = $("fTipoObs") ? $("fTipoObs").value : "";
+  var fDesde = $("fDesde") ? $("fDesde").value : "";
+  var fHasta = $("fHasta") ? $("fHasta").value : "";
+  var fQ = $("fQ") ? ($("fQ").value||"").toLowerCase() : "";
+
+  for(var i=0;i<rows.length;i++) {
+    var r=rows[i];
+    if(fPl && r["PLANTA"]!==fPl) continue;
+    if(fAr && r["AREA"]!==fAr) continue;
+    if(fArP && (r["Area a la que pertenece la persona abordada"]||"")!==fArP) continue;
+    if(fAu && r["AUDITOR LIDER"]!==fAu) continue;
+    if(fTipo && String(r["OBSERVACION"])!==String(fTipo)) continue;
+    if(fTipoObs && String(r._tipoObs||"")!==String(fTipoObs)) continue;
+    if(fDesde && (r["FECHA AUDITORIA"]||"") < fDesde) continue;
+    if(fHasta && (r["FECHA AUDITORIA"]||"") > fHasta) continue;
+    if(fQ) {
+      var blob = JSON.stringify(r).toLowerCase();
+      if(blob.indexOf(fQ)===-1) continue;
+    }
+    out.push(r);
+  }
+  return out;
+}
+
+function buildIASMap(allRows) {
+  var groups = {};
+  for(var i=0;i<allRows.length;i++) {
+    var r = allRows[i];
+    if(!r) continue;
+    var id = String(r._auditId||"");
+    if(!id) continue;
+    if(!groups[id]) groups[id]=[];
+    groups[id].push(r);
+  }
+  var map = {};
+  for(var k in groups) if(groups.hasOwnProperty(k)) map[k] = computeIAS(groups[k]);
+  return map;
+}
+
+function renderTable() {
+  var table = $("tablaReg");
+  if(!table) return;
+  var head = table.querySelector("thead");
+  var body = table.querySelector("tbody");
+  head.innerHTML=""; body.innerHTML="";
+
+  var iasMap = buildIASMap(db);
+
+  var cols = ["FECHA AUDITORIA","PLANTA","AREA","AUDITOR LIDER","OBSERVACION","FS","IAS AUDITORIA","NOMBRE","ACTO INSEGURO OBSERVADO","OBSERVACIONES"];
+  var trh=document.createElement("tr");
+  for(var i=0;i<cols.length;i++) {
+    var th=document.createElement("th"); th.textContent=cols[i]; trh.appendChild(th);
+  }
+  var th2=document.createElement("th"); th2.textContent="ACCIONES"; trh.appendChild(th2);
+  head.appendChild(trh);
+
+  var rows = applyFilters(db);
+  for(var j=0;j<rows.length;j++) {
+    var r=rows[j];
+    var tr=document.createElement("tr");
+    for(var k=0;k<cols.length;k++) {
+      var td=document.createElement("td");
+      var c=cols[k];
+      if(c==="IAS AUDITORIA") {
+        var val = iasMap[String(r._auditId||"")];
+        td.textContent = (val===undefined) ? "" : (Number(val).toFixed(1) + "%");
+      } else if(c==="OBSERVACION") {
+        td.textContent = (String(r[c])==="1") ? "1 (Seguro)" : (String(r[c])==="2" ? "2 (Inseguro)" : (r[c]||""));
+      } else {
+        td.textContent = (r[c]!==undefined && r[c]!==null) ? r[c] : "";
+      }
+      tr.appendChild(td);
+    }
+    var tdA=document.createElement("td");
+    var b=document.createElement("button");
+    b.className="btn danger"; b.type="button"; b.textContent="Borrar";
+    (function(id){ b.addEventListener("click", function(){
+      var nd=[];
+      for(var x=0;x<db.length;x++) if(db[x]._id!==id) nd.push(db[x]);
+      db=nd; saveDB(); renderTable(); renderDashboard();
+      updateHeaderAuditStats();
+      toast("🗑️ Registro eliminado.");
+    }); })(r._id);
+    tdA.appendChild(b);
+    tr.appendChild(tdA);
+    body.appendChild(tr);
+  }
+
+  // refrescar selector de auditoría para PDF
+  refreshPdfAuditSelect();
+}
+
+function renderAuditorCompareSelects() {
+  var s1=document.getElementById("cmpAud1");
+  var s2=document.getElementById("cmpAud2");
+  if(!s1 || !s2 || !CATALOG) return;
+  var names=[];
+  for(var i=0;i<CATALOG.auditors.length;i++) names.push(CATALOG.auditors[i].name);
+
+  function fill(sel) {
+    var prev=sel.value||"";
+    sel.innerHTML="";
+    option(sel,"","(Selecciona)");
+    for(var j=0;j<names.length;j++) option(sel,names[j],names[j]);
+    // restore
+    for(var k=0;k<sel.options.length;k++) if(sel.options[k].value===prev) sel.value=prev;
+  }
+  fill(s1); fill(s2);
+}
+
+function compareAuditorVsAuditor() {
+  var s1=document.getElementById("cmpAud1");
+  var s2=document.getElementById("cmpAud2");
+  if(!s1 || !s2) return;
+  var a1=s1.value, a2=s2.value;
+  if(!a1 || !a2) return toast("⚠️ Selecciona Auditor A y Auditor B.");
+  if(a1===a2) return toast("⚠️ Selecciona dos auditores distintos.");
+
+  var base = applyFilters(db);
+  var dTipoObsSel = document.getElementById("dTipoObs") ? document.getElementById("dTipoObs").value : "";
+  if(dTipoObsSel) {
+    var tmp=[];
+    for(var i=0;i<base.length;i++) if(String(base[i]._tipoObs||"")===String(dTipoObsSel)) tmp.push(base[i]);
+    base=tmp;
+  }
+
+  var r1=[], r2=[];
+  for(var j=0;j<base.length;j++) {
+    if(String(base[j]["AUDITOR LIDER"]||"")===String(a1)) r1.push(base[j]);
+    if(String(base[j]["AUDITOR LIDER"]||"")===String(a2)) r2.push(base[j]);
+  }
+
+  var labels=[a1,a2];
+  var counts=[r1.length, r2.length];
+  var iasVals=[Number(computeIAS(r1).toFixed(2)), Number(computeIAS(r2).toFixed(2))];
+
+  if(window.Chart && document.getElementById("chAudVsCount")) {
+    var ctx1=document.getElementById("chAudVsCount").getContext("2d");
+    if(charts["chAudVsCount"]) charts["chAudVsCount"].destroy();
+    charts["chAudVsCount"]= new Chart(ctx1, {type:"bar", data:{labels:labels, datasets:[{label:"Registros", data:counts}]}, options:{responsive:true, plugins:{legend:{display:false}}}});
+  }
+  if(window.Chart && document.getElementById("chAudVsIAS")) {
+    var ctx2=document.getElementById("chAudVsIAS").getContext("2d");
+    if(charts["chAudVsIAS"]) charts["chAudVsIAS"].destroy();
+    charts["chAudVsIAS"]= new Chart(ctx2, {type:"bar", data:{labels:labels, datasets:[{label:"IAS %", data:iasVals}]}, options:{responsive:true, plugins:{legend:{display:false}}}});
+  }
+  toast("✅ Comparación actualizada.");
+}
+
+function renderDashboard() {
+  var base = applyFilters(db);
+
+  // Filtro dashboard por tipoObs
+  var dTipoObsSel = document.getElementById("dTipoObs") ? document.getElementById("dTipoObs").value : "";
+  var rows = base;
+  if(dTipoObsSel) {
+    rows=[];
+    for(var i=0;i<base.length;i++) if(String(base[i]._tipoObs||"")===String(dTipoObsSel)) rows.push(base[i]);
+  }
+
+  // KPIs
+  var seguros=0, inseguros=0, fs3=0;
+  for(var j=0;j<rows.length;j++) {
+    if(String(rows[j]["OBSERVACION"])==="1") seguros++;
+    if(String(rows[j]["OBSERVACION"])==="2") inseguros++;
+    if(String(rows[j]["FS"])==="3") fs3++;
+  }
+  if($("kTotal")) $("kTotal").textContent = String(rows.length);
+  if($("kSeguros")) $("kSeguros").textContent = String(seguros);
+  if($("kInseguros")) $("kInseguros").textContent = String(inseguros);
+  if($("kFS3")) $("kFS3").textContent = String(fs3);
+  if($("kIAS")) $("kIAS").textContent = computeIAS(rows).toFixed(1) + "%";
+
+  // IAS por planta (semana/mes)
+  (function(){
+    var mode = $("iasPeriodMode") ? $("iasPeriodMode").value : "month";
+    var agg  = $("iasAggMode") ? $("iasAggMode").value : "cumulative";
+
+    var range = null;
+    if(mode==="week") {
+      range = weekRangeFromInput($("iasWeek") ? $("iasWeek").value : "");
+    } else {
+      range = monthRangeFromInput($("iasMonth") ? $("iasMonth").value : "");
+    }
+
+    if(!range) {
+      // Default a mes actual
+      var d=new Date();
+      if($("iasMonth") && !$("iasMonth").value) $("iasMonth").value = d.getFullYear()+"-"+pad2(d.getMonth()+1);
+      if($("iasWeek") && !$("iasWeek").value) $("iasWeek").value = isoWeekValueFromDate(d);
+      range = (mode==="week") ? weekRangeFromInput($("iasWeek") ? $("iasWeek").value : "") : monthRangeFromInput($("iasMonth") ? $("iasMonth").value : "");
+    }
+
+    var inRows=[];
+    for(var i=0;i<rows.length;i++) {
+      var dStr = String(rows[i]["FECHA AUDITORIA"]||"").slice(0,10);
+      if(!dStr) dStr = String(rows[i]._ts||"").slice(0,10);
+      if(!dStr) continue;
+      if(dStr>=range.start && dStr<=range.end) inRows.push(rows[i]);
+    }
+
+    // Plant grouping
+    var plant={};
+    var auditsByPlant={};
+    for(var j=0;j<inRows.length;j++) {
+      var r=inRows[j];
+      var p=String(r["PLANTA"]||"(Sin planta)");
+      var id=String(r._auditId||"");
+      if(!plant[p]) plant[p]={seg:0, tot:0, count:0};
+      plant[p].tot++; plant[p].count++;
+      if(String(r["OBSERVACION"])==="1") plant[p].seg++;
+      if(!auditsByPlant[p]) auditsByPlant[p]={};
+      if(id) {
+        if(!auditsByPlant[p][id]) auditsByPlant[p][id]={seg:0,tot:0};
+        auditsByPlant[p][id].tot++;
+        if(String(r["OBSERVACION"])==="1") auditsByPlant[p][id].seg++;
+      }
+    }
+
+    var labels=[]; var data=[];
+    var meta=[];
+    for(var p in plant) if(plant.hasOwnProperty(p)) {
+      var val=0;
+      if(agg==="average") {
+        var m=auditsByPlant[p]||{};
+        var sum=0, n=0;
+        for(var aid in m) if(m.hasOwnProperty(aid)) {
+          if(m[aid].tot>0) { sum += (m[aid].seg/m[aid].tot)*100; n++; }
+        }
+        val = (n>0) ? (sum/n) : ((plant[p].tot>0) ? (plant[p].seg/plant[p].tot)*100 : 0);
+      } else {
+        val = (plant[p].tot>0) ? (plant[p].seg/plant[p].tot)*100 : 0;
+      }
+      meta.push({p:p, v:val, n:plant[p].tot});
+    }
+
+    meta.sort(function(a,b){
+      // mayor IAS primero, y en empate mayor n
+      if(b.v===a.v) return (b.n||0)-(a.n||0);
+      return b.v-a.v;
+    });
+
+    // Si son demasiadas plantas, mostrar las 15 con más registros del periodo
+    if(meta.length>15) {
+      meta.sort(function(a,b){ return (b.n||0)-(a.n||0); });
+      meta = meta.slice(0,15);
+      meta.sort(function(a,b){ return b.v-a.v; });
+    }
+
+    for(var k=0;k<meta.length;k++) {
+      labels.push(meta[k].p);
+      data.push(Number(meta[k].v.toFixed(1)));
+    }
+
+    if($("iasPeriodSummary")) {
+      var txt = (range.start+" a "+range.end) + " | plantas: " + meta.length + " | registros: " + inRows.length;
+      $("iasPeriodSummary").value = txt;
+    }
+
+    if(labels.length===0) {
+      // chart vacío
+      drawChart("chIASPlantPeriod", "bar", ["(Sin datos en el periodo)"], [0], "IAS %", {
+        plugins:{legend:{display:false}},
+        scales:{y:{beginAtZero:true, max:100}}
+      });
+      return;
+    }
+
+    drawChart("chIASPlantPeriod", "bar", labels, data, "IAS %", {
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{autoSkip:true, maxRotation:60, minRotation:0}}, y:{beginAtZero:true, max:100}}
+    });
+  })();
+
+
+  // Helpers
+  function countBy(list, keyFn, filterFn) {
+    var m = {};
+    for(var i=0;i<list.length;i++) {
+      var it=list[i];
+      if(filterFn && !filterFn(it)) continue;
+      var k = keyFn(it);
+      if(!k) k="(Sin dato)";
+      m[k] = (m[k]||0)+1;
+    }
+    return m;
+  }
+  function topN(map, n) {
+    var arr=[];
+    for(var k in map) if(map.hasOwnProperty(k)) arr.push([k,map[k]]);
+    arr.sort(function(a,b){ return b[1]-a[1]; });
+    return arr.slice(0,n);
+  }
+  function drawChart(id, type, labels, data, label, extraOpts) {
+    if(!window.Chart) return;
+    var c=document.getElementById(id);
+    if(!c) return;
+    var ctx=c.getContext("2d");
+    if(charts[id]) { try { charts[id].destroy(); } catch(e){} }
+    var opts = {responsive:true, plugins:{legend:{position:"bottom"}}};
+    if(extraOpts) {
+      for(var k in extraOpts) opts[k]=extraOpts[k];
+    }
+    charts[id]= new Chart(ctx, {
+      type: type,
+      data: { labels: labels, datasets: [{label: label, data: data}] },
+      options: opts
+    });
+  }
+
+  // Comparativo Seguridad vs seleccionado (stacked: seguros vs inseguros)
+  var otherSel = document.getElementById("cmpOther") ? document.getElementById("cmpOther").value : "__ALL_OTHERS__";
+  var labelOther = (otherSel==="__ALL_OTHERS__") ? "Otras" : String(otherSel||"Otras");
+
+  var secSeg=0, secIns=0, othSeg=0, othIns=0;
+  for(var i0=0;i0<rows.length;i0++) {
+    var t = String(rows[i0]._tipoObs||"");
+    var obsV = String(rows[i0]["OBSERVACION"]||"");
+    var isSec = (t==="Seguridad");
+    var isOth = false;
+    if(!isSec) {
+      if(otherSel==="__ALL_OTHERS__") isOth = true;
+      else if(t===otherSel) isOth = true;
+    }
+    if(isSec) {
+      if(obsV==="1") secSeg++;
+      else if(obsV==="2") secIns++;
+    } else if(isOth) {
+      if(obsV==="1") othSeg++;
+      else if(obsV==="2") othIns++;
+    }
+  }
+
+  if(window.Chart && document.getElementById("chCompare")) {
+    var ctxC=document.getElementById("chCompare").getContext("2d");
+    if(charts["chCompare"]) { try { charts["chCompare"].destroy(); } catch(e){} }
+    charts["chCompare"]= new Chart(ctxC, {
+      type:"bar",
+      data:{
+        labels:["Seguridad", labelOther],
+        datasets:[
+          {label:"Actos seguros", data:[secSeg, othSeg]},
+          {label:"Observaciones inseguras", data:[secIns, othIns]}
+        ]
+      },
+      options:{
+        responsive:true,
+        plugins:{legend:{position:"bottom"}},
+        scales:{x:{stacked:true}, y:{stacked:true, beginAtZero:true}}
+      }
+    });
+  }
+
+// Hallazgos (solo OBSERVACION=2) para análisis estadístico
+  var hall = [];
+  for(var h=0; h<rows.length; h++) if(String(rows[h]["OBSERVACION"])==="2") hall.push(rows[h]);
+
+  // FS (donut)
+  var fsMap = countBy(hall, function(r){ return String(r["FS"]||""); }, null);
+  var fsTop = topN(fsMap, 10);
+  drawChart("chFS", "doughnut", fsTop.map(function(x){return x[0]||"(Sin dato)";}), fsTop.map(function(x){return x[1];}), "FS");
+
+  // Categorías primarias (pie)
+  var catMap = countBy(hall, function(r){ return String(r["CATEGORIA PRIMARIA"]||""); }, null);
+  var catTop = topN(catMap, 8);
+  drawChart("chCat", "pie", catTop.map(function(x){return x[0];}), catTop.map(function(x){return x[1];}), "Categoría primaria");
+
+  // Causas primarias (pie)
+  var cauMap = countBy(hall, function(r){ return String(r["CAUSA PRIMARIA"]||""); }, null);
+  var cauTop = topN(cauMap, 8);
+  drawChart("chCausa", "pie", cauTop.map(function(x){return x[0];}), cauTop.map(function(x){return x[1];}), "Causa primaria");
+
+  // Por planta (bar, top 10)
+  var pMap = countBy(hall, function(r){ return String(r["PLANTA"]||""); }, null);
+  var pTop = topN(pMap, 10);
+  drawChart("chPlanta", "bar", pTop.map(function(x){return x[0];}), pTop.map(function(x){return x[1];}), "Hallazgos (inseguros)", {plugins:{legend:{display:false}}});
+
+  // Por auditor (bar, top 10)
+  var aMap = countBy(hall, function(r){ return String(r["AUDITOR LIDER"]||""); }, null);
+  var aTop = topN(aMap, 10);
+  drawChart("chAuditor", "bar", aTop.map(function(x){return x[0];}), aTop.map(function(x){return x[1];}), "Hallazgos (inseguros)", {plugins:{legend:{display:false}}});
+
+  // Por área persona (bar, top 10)
+  var apMap = countBy(hall, function(r){ return String(r["Area a la que pertenece la persona abordada"]||""); }, null);
+  var apTop = topN(apMap, 10);
+  drawChart("chAreaPersona", "bar", apTop.map(function(x){return x[0];}), apTop.map(function(x){return x[1];}), "Hallazgos (inseguros)", {plugins:{legend:{display:false}}});
+
+  // Comentarios (tabla)
+  var tC = document.getElementById("tablaComentarios");
+  if(tC) {
+    var tb = tC.querySelector("tbody");
+    if(tb) {
+      tb.innerHTML="";
+      for(var c=0; c<rows.length; c++) {
+        var com = String(rows[c]["OBSERVACIONES"]||"").trim();
+        if(!com) continue;
+        var tr=document.createElement("tr");
+        var tipo = (String(rows[c]["OBSERVACION"])==="1") ? "Seguro" : "Inseguro";
+        var cols = [
+          rows[c]["FECHA AUDITORIA"]||"",
+          rows[c]["PLANTA"]||"",
+          rows[c]["AREA"]||"",
+          rows[c]["AUDITOR LIDER"]||"",
+          tipo,
+          com
+        ];
+        for(var z=0; z<cols.length; z++) {
+          var td=document.createElement("td");
+          td.textContent = cols[z];
+          tr.appendChild(td);
+        }
+        tb.appendChild(tr);
+      }
+      if(tb.children.length===0) {
+        var tr0=document.createElement("tr");
+        var td0=document.createElement("td");
+        td0.colSpan=6;
+        td0.style.color="rgba(255,255,255,.72)";
+        td0.textContent="(Sin comentarios en el filtro actual)";
+        tr0.appendChild(td0);
+        tb.appendChild(tr0);
+      }
+    }
+  }
+
+  // Selectores para comparación Auditor vs Auditor
+  renderAuditorCompareSelects();
+}
+
+function loadLogo() {
+  var data = localStorage.getItem(LOGO_KEY);
+  var box = $("logoBox");
+  if(!box) return;
+  box.innerHTML="";
+  if(data) {
+    var img=document.createElement("img");
+    img.src=data;
+    box.appendChild(img);
+  } else {
+    var span=document.createElement("span");
+    span.textContent="MOCTEZUMA";
+    span.style.fontWeight="900";
+    span.style.fontSize="10px";
+    span.style.letterSpacing=".6px";
+    box.appendChild(span);
+  }
+}
+
+
+function renderAdminCatalogs() {
+  // Listas de inhabilitación (planta/área/auditor)
+  var boxP = $("adminPlantas");
+  var boxA = $("adminAreas");
+  var boxU = $("adminAuditores");
+  if(!boxP || !boxA || !boxU) return;
+
+  // base completo (override si existe) para poder re-habilitar
+  var ovr = loadCatalogOverride();
+  var base = {
+    plants: CATALOG_RAW.plants.slice(),
+    areas: CATALOG_RAW.areas.slice(),
+    auditors: CATALOG_RAW.auditors.slice()
+  };
+  if(ovr) {
+    if(Array.isArray(ovr.plants)) base.plants = ovr.plants.slice();
+    if(Array.isArray(ovr.areas)) base.areas = ovr.areas.slice();
+    if(Array.isArray(ovr.auditors)) base.auditors = ovr.auditors.slice();
+  }
+
+  function mkRow(name, active, onToggle) {
+    var row = document.createElement("div");
+    row.style.display="flex";
+    row.style.alignItems="center";
+    row.style.justifyContent="space-between";
+    row.style.gap="10px";
+    row.style.padding="8px 10px";
+    row.style.border="1px solid rgba(255,255,255,.10)";
+    row.style.borderRadius="12px";
+    row.style.marginBottom="8px";
+    row.style.background="rgba(255,255,255,.03)";
+
+    var left=document.createElement("div");
+    left.innerHTML = '<div style="font-weight:800; font-size:12px;">'+escapeHtml(name)+'</div>';
+
+    var right=document.createElement("label");
+    right.style.display="flex";
+    right.style.alignItems="center";
+    right.style.gap="8px";
+    right.style.color="rgba(255,255,255,.72)";
+    right.style.fontSize="12px";
+
+    var cb=document.createElement("input");
+    cb.type="checkbox";
+    cb.checked = active;
+    cb.onchange = function(){ onToggle(cb.checked); rightTxt.nodeValue = cb.checked ? "Activo" : "Inhabilitado"; };
+
+    var rightTxt=document.createTextNode(cb.checked ? "Activo" : "Inhabilitado");
+    right.appendChild(cb);
+    right.appendChild(rightTxt);
+
+    row.appendChild(left);
+    row.appendChild(right);
+    return row;
+  }
+
+  function renderList(container, items, disabledList, keyGetter) {
+    container.innerHTML="";
+    for(var i=0;i<items.length;i++) {
+      var key = keyGetter(items[i]);
+      var active = disabledList.indexOf(key)===-1;
+      (function(k){
+        container.appendChild(mkRow(k, active, function(isActive){
+          var idx = disabledList.indexOf(k);
+          if(isActive) { if(idx!==-1) disabledList.splice(idx,1); }
+          else { if(idx===-1) disabledList.push(k); }
+        }));
+      })(key);
+    }
+  }
+
+  renderList(boxP, base.plants, disabled.plants, function(x){return x;});
+  renderList(boxA, base.areas, disabled.areas, function(x){return x;});
+  renderList(boxU, base.auditors, disabled.auditors, function(x){return x.name;});
+}
+
+function renderEditCatalogs() {
+  // Editores (alta/baja/edición)
+  var boxP = $("editPlantas");
+  var boxA = $("editAreas");
+  var boxAP = $("editAreasPersona");
+  var boxU = $("editAuditores");
+  if(!boxP || !boxA || !boxAP || !boxU) return;
+
+  var base = loadCatalogOverride();
+  if(!base) {
+    base = { plants: CATALOG_RAW.plants.slice(), areas: CATALOG_RAW.areas.slice(), personAreas: (CATALOG_RAW.personAreas||[]).slice(), auditors: CATALOG_RAW.auditors.slice() };
+  } else {
+    // asegurar estructura
+    base.plants = Array.isArray(base.plants) ? base.plants.slice() : CATALOG_RAW.plants.slice();
+    base.areas  = Array.isArray(base.areas) ? base.areas.slice() : CATALOG_RAW.areas.slice();
+    base.personAreas = Array.isArray(base.personAreas) ? base.personAreas.slice() : (CATALOG_RAW.personAreas||[]).slice();
+    base.auditors = Array.isArray(base.auditors) ? base.auditors.slice() : CATALOG_RAW.auditors.slice();
+  }
+
+  function listEditor(container, arr, onSave, key) {
+    container.innerHTML="";
+    for(var i=0;i<arr.length;i++) {
+      (function(idx){
+        var row=document.createElement("div");
+        row.style.display="flex";
+        row.style.gap="10px";
+        row.style.alignItems="center";
+        row.style.padding="8px 10px";
+        row.style.border="1px solid rgba(255,255,255,.10)";
+        row.style.borderRadius="12px";
+        row.style.marginBottom="8px";
+        row.style.background="rgba(255,255,255,.03)";
+
+        var inp=document.createElement("input");
+        inp.value = arr[idx] || "";
+        inp.style.flex="1";
+        inp.onchange = function(){
+          arr[idx] = (inp.value||"").trim();
+          // limpiar vacíos
+          var cleaned=[];
+          for(var j=0;j<arr.length;j++) if(arr[j]) cleaned.push(arr[j]);
+          onSave(cleaned);
+        };
+
+        var del=document.createElement("button");
+        del.className="btn danger";
+        del.type="button";
+        del.textContent="🗑️";
+        del.onclick = function(){
+          arr.splice(idx,1);
+          onSave(arr);
+        };
+
+        row.appendChild(inp);
+        row.appendChild(del);
+        container.appendChild(row);
+      })(i);
+    }
+  }
+
+  listEditor(boxP, base.plants, function(newArr){
+    base.plants = newArr;
+    // limpiar inhabilitados
+    disabled.plants = filterKeep(disabled.plants, base.plants);
+    saveDisabled();
+    saveCatalogOverride(base);
+    refreshCatalogEverywhere();
+    renderAdminCatalogs();
+    renderEditCatalogs();
+  });
+
+  listEditor(boxA, base.areas, function(newArr){
+    base.areas = newArr;
+    disabled.areas = filterKeep(disabled.areas, base.areas);
+    saveDisabled();
+    saveCatalogOverride(base);
+    refreshCatalogEverywhere();
+    renderAdminCatalogs();
+    renderEditCatalogs();
+  });
+
+  listEditor(boxAP, base.personAreas, function(newArr){
+    base.personAreas = newArr;
+    base = ensureRequiredCatalog(base);
+    saveCatalogOverride(base);
+    refreshCatalogEverywhere();
+    renderAdminCatalogs();
+    renderEditCatalogs();
+    toast("✅ Áreas (persona) actualizadas.");
+  });
+
+  // Auditores editor (grid)
+  boxU.innerHTML="";
+  for(var i=0;i<base.auditors.length;i++) {
+    (function(idx){
+      var au = base.auditors[idx];
+      var row=document.createElement("div");
+      row.style.display="grid";
+      row.style.gridTemplateColumns="1.2fr .8fr .9fr 1fr auto";
+      row.style.gap="8px";
+      row.style.padding="8px 10px";
+      row.style.border="1px solid rgba(255,255,255,.10)";
+      row.style.borderRadius="12px";
+      row.style.marginBottom="8px";
+      row.style.background="rgba(255,255,255,.03)";
+
+      function mk(val, prop) {
+        var inp=document.createElement("input");
+        inp.value = val || "";
+        inp.onchange = function(){
+          au[prop] = (inp.value||"").trim();
+          saveCatalogOverride(base);
+          refreshCatalogEverywhere();
+          renderAdminCatalogs();
+        };
+        return inp;
+      }
+
+      row.appendChild(mk(au.name,"name"));
+      row.appendChild(mk(au.tipo,"tipo"));
+      row.appendChild(mk(au.area,"area"));
+      row.appendChild(mk(au.puesto,"puesto"));
+
+      var del=document.createElement("button");
+      del.className="btn danger"; del.type="button"; del.textContent="🗑️";
+      del.onclick = function(){
+        base.auditors.splice(idx,1);
+        // limpiar inhabilitados
+        var names=[];
+        for(var k=0;k<base.auditors.length;k++) names.push(base.auditors[k].name);
+        disabled.auditors = filterKeep(disabled.auditors, names);
+        saveDisabled();
+        saveCatalogOverride(base);
+        refreshCatalogEverywhere();
+        renderAdminCatalogs();
+        renderEditCatalogs();
+      };
+      row.appendChild(del);
+
+      boxU.appendChild(row);
+    })(i);
+  }
+}
+
+function wireCatalogEditorButtons() {
+  // Agregar planta
+  var bP = $("addPlanta");
+  if(bP && !bP._wired) {
+    bP._wired=true;
+    bP.onclick = function(){
+      var name = ($("newPlanta") ? ($("newPlanta").value||"") : "").trim();
+      if(!name) return toast("⚠️ Escribe el nombre de la planta.");
+      var base = loadCatalogOverride() || { plants: CATALOG_RAW.plants.slice(), areas: CATALOG_RAW.areas.slice(), personAreas: (CATALOG_RAW.personAreas||[]).slice(), auditors: CATALOG_RAW.auditors.slice() };
+      if(base.plants.indexOf(name)!==-1) return toast("⚠️ Esa planta ya existe.");
+      base.plants.push(name);
+      saveCatalogOverride(base);
+      if($("newPlanta")) $("newPlanta").value="";
+      refreshCatalogEverywhere();
+      renderAdminCatalogs();
+      renderEditCatalogs();
+      toast("✅ Planta agregada.");
+    };
+  }
+
+  // Agregar área
+  var bA = $("addArea");
+  if(bA && !bA._wired) {
+    bA._wired=true;
+    bA.onclick = function(){
+      var name = ($("newArea") ? ($("newArea").value||"") : "").trim();
+      if(!name) return toast("⚠️ Escribe el nombre del área.");
+      var base = loadCatalogOverride() || { plants: CATALOG_RAW.plants.slice(), areas: CATALOG_RAW.areas.slice(), personAreas: (CATALOG_RAW.personAreas||[]).slice(), auditors: CATALOG_RAW.auditors.slice() };
+      if(base.areas.indexOf(name)!==-1) return toast("⚠️ Esa área ya existe.");
+      base.areas.push(name);
+      saveCatalogOverride(base);
+      if($("newArea")) $("newArea").value="";
+      refreshCatalogEverywhere();
+      renderAdminCatalogs();
+      renderEditCatalogs();
+      toast("✅ Área agregada.");
+    };
+
+  // Agregar área (persona abordada)
+  var bAP = $("addAreaPersona");
+  if(bAP && !bAP._wired) {
+    bAP._wired=true;
+    bAP.onclick = function(){
+      var name = ($("newAreaPersona") ? ($("newAreaPersona").value||"") : "").trim();
+      if(!name) return toast("⚠️ Escribe el nombre del área (persona).");
+      var base = loadCatalogOverride() || { plants: CATALOG_RAW.plants.slice(), areas: CATALOG_RAW.areas.slice(), personAreas: (CATALOG_RAW.personAreas||[]).slice(), auditors: CATALOG_RAW.auditors.slice() };
+      base.personAreas = Array.isArray(base.personAreas) ? base.personAreas : (CATALOG_RAW.personAreas||[]).slice();
+      if(base.personAreas.indexOf(name)!==-1) return toast("⚠️ Esa área (persona) ya existe.");
+      base.personAreas.push(name);
+      base = ensureRequiredCatalog(base);
+      saveCatalogOverride(base);
+      if($("newAreaPersona")) $("newAreaPersona").value="";
+      refreshCatalogEverywhere();
+      renderEditCatalogs();
+      toast("✅ Área (persona) agregada.");
+    };
+  }
+
+  }
+
+  // Agregar auditor
+  var bU = $("addAuditor");
+  if(bU && !bU._wired) {
+    bU._wired=true;
+    bU.onclick = function(){
+      var name = ($("newAudName") ? ($("newAudName").value||"") : "").trim();
+      if(!name) return toast("⚠️ Escribe el nombre del auditor.");
+      var base = loadCatalogOverride() || { plants: CATALOG_RAW.plants.slice(), areas: CATALOG_RAW.areas.slice(), personAreas: (CATALOG_RAW.personAreas||[]).slice(), auditors: CATALOG_RAW.auditors.slice() };
+      for(var i=0;i<base.auditors.length;i++) if((base.auditors[i].name||"").trim()===name) return toast("⚠️ Ese auditor ya existe.");
+      base.auditors.push({
+        name: name,
+        tipo: ($("newAudTipo") ? ($("newAudTipo").value||"") : "").trim(),
+        area: ($("newAudArea") ? ($("newAudArea").value||"") : "").trim(),
+        puesto: ($("newAudPuesto") ? ($("newAudPuesto").value||"") : "").trim()
+      });
+      saveCatalogOverride(base);
+      if($("newAudName")) $("newAudName").value="";
+      if($("newAudTipo")) $("newAudTipo").value="";
+      if($("newAudArea")) $("newAudArea").value="";
+      if($("newAudPuesto")) $("newAudPuesto").value="";
+      refreshCatalogEverywhere();
+      renderAdminCatalogs();
+      renderEditCatalogs();
+      toast("✅ Auditor agregado.");
+    };
+  }
+
+  // Guardar inhabilitados
+  var bSave = $("guardarCatalogos");
+  if(bSave && !bSave._wired) {
+    bSave._wired=true;
+    bSave.onclick = function(){
+      // Los toggles ya modificaron disabled.* en memoria (por closure); solo persistimos y refrescamos.
+      saveDisabled();
+      refreshCatalogEverywhere();
+      toast("✅ Catálogos actualizados (inhabilitados aplicados).");
+    };
+  }
+}
+  // Exportar / importar catálogo JSON (respaldo)
+  var bExp = $("exportCatalogJson");
+  if(bExp && !bExp._wired) {
+    bExp._wired=true;
+    bExp.onclick = function(){
+      var ovr = loadCatalogOverride();
+      if(!ovr) ovr = { plants: CATALOG_RAW.plants.slice(), areas: CATALOG_RAW.areas.slice(), personAreas: (CATALOG_RAW.personAreas||[]).slice(), auditors: CATALOG_RAW.auditors.slice() };
+      ovr = ensureRequiredCatalog(ovr);
+      var payload = {
+        kind: "AE_CATALOG_BACKUP",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        catalogs: { plants: ovr.plants, areas: ovr.areas, personAreas: ovr.personAreas, auditors: ovr.auditors },
+        disabled: { plants: disabled.plants, areas: disabled.areas, auditors: disabled.auditors }
+      };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+      var fn = "AE_Catalogos_" + todayISO() + ".json";
+      downloadBlob(blob, fn);
+      toast("⬇️ Catálogos exportados.");
+    };
+  }
+
+  var inCat = $("importCatalogJson");
+  if(inCat && !inCat._wired) {
+    inCat._wired=true;
+    inCat.onchange = function(ev){
+      var file = ev.target.files && ev.target.files[0];
+      if(!file) return;
+      var fr = new FileReader();
+      fr.onload = function(){
+        try {
+          var obj = JSON.parse(String(fr.result||"{}"));
+          var cats = null;
+          var dis = null;
+          if(obj && obj.kind === "AE_CATALOG_BACKUP") {
+            cats = obj.catalogs || null;
+            dis = obj.disabled || null;
+          } else {
+            // formato simple legacy: {plants, areas, auditors}
+            cats = obj;
+          }
+          if(!cats) throw new Error("Estructura inválida");
+          var plants = Array.isArray(cats.plants) ? cats.plants : null;
+          var areas  = Array.isArray(cats.areas) ? cats.areas : null;
+          var personAreas = Array.isArray(cats.personAreas) ? cats.personAreas : (CATALOG_RAW.personAreas||[]);
+          var auditors = Array.isArray(cats.auditors) ? cats.auditors : null;
+          if(!plants || !areas || !auditors) throw new Error("Faltan plants/areas/auditors");
+          // Sanitizar auditores
+          var audOut=[];
+          for(var i=0;i<auditors.length;i++){
+            var a = auditors[i];
+            if(typeof a==="string") audOut.push({name:String(a).trim(), tipo:"", area:"", puesto:""});
+            else if(a && a.name) audOut.push({
+              name:String(a.name||"").trim(),
+              tipo:String(a.tipo||"").trim(),
+              area:String(a.area||"").trim(),
+              puesto:String(a.puesto||"").trim()
+            });
+          }
+          var base = { plants: plants.slice(), areas: areas.slice(), personAreas: (personAreas||[]).slice(), auditors: audOut };
+          base = ensureRequiredCatalog(base);
+          saveCatalogOverride(base);
+
+          if(dis) {
+            disabled.plants = Array.isArray(dis.plants) ? dis.plants.slice() : [];
+            disabled.areas  = Array.isArray(dis.areas) ? dis.areas.slice() : [];
+            disabled.auditors = Array.isArray(dis.auditors) ? dis.auditors.slice() : [];
+            saveDisabled();
+          }
+          refreshCatalogEverywhere();
+          renderAdminCatalogs(); renderEditCatalogs();
+          toast("✅ Catálogos importados correctamente.");
+          try { inCat.value=""; } catch(e){}
+        } catch(e) {
+          toast("❌ Error al importar catálogos: " + (e && e.message ? e.message : "JSON inválido"));
+        }
+      };
+      fr.readAsText(file);
+    };
+  }
+
+  var bReset = $("resetCatalogos");
+  if(bReset && !bReset._wired) {
+    bReset._wired=true;
+    bReset.onclick = function(){
+      if(!confirm("¿Restablecer catálogos a los originales? (Se perderán ediciones locales)")) return;
+      clearCatalogOverride();
+      disabled.plants=[]; disabled.areas=[]; disabled.auditors=[];
+      saveDisabled();
+      refreshCatalogEverywhere();
+      renderAdminCatalogs(); renderEditCatalogs();
+      toast("✅ Catálogos restablecidos.");
+    };
+  }
+
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function filterKeep(list, allowed) {
+  var out=[];
+  for(var i=0;i<list.length;i++) if(allowed.indexOf(list[i])!==-1) out.push(list[i]);
+  return out;
+}
+
+function refreshCatalogEverywhere() {
+  initCatalogs();
+  // refresh filters and tables/dash if visible
+  if($("tab-registros") && !$("tab-registros").classList.contains("hide")) renderTable();
+  if($("tab-dashboard") && !$("tab-dashboard").classList.contains("hide")) renderDashboard();
+}
+
+function boot() {
+  wireTabs();
+  wireImportAuditJson();
+  wireRegImportAuditJson();
+  loadState();
+  initCatalogs();
+  wireCategoryCascades();
+  wireAuditorAutofill();
+  initDefaults();
+  wireReconFeatures();
+  updateHeaderAuditStats();
+
+  if($("tipoPersonal")) $("tipoPersonal").onchange = syncPuestosByTipoPersonal;
+
+  if($("guardarEncabezado")) $("guardarEncabezado").onclick = function() {
+    var r=readHeaderFromUI();
+    if(!r.ok) return toast("⚠️ "+r.msg);
+    hdr=r.data;
+    if($("fechaRegistro")) $("fechaRegistro").value = hdr.fechaRegistro;
+    if($("horaRegistro")) $("horaRegistro").value = hdr.horaRegistro;
+    saveHDR();
+    updateHeaderAuditStats();
+    toast("✅ Encabezado guardado.");
+  };
+  if($("limpiarEncabezado")) $("limpiarEncabezado").onclick = function() {
+    hdr=null;
+    localStorage.removeItem(HEADER_KEY);
+    setStatus();
+    updateHeaderAuditStats();
+    toast("Encabezado limpiado.");
+  };
+
+  if($("agregarRegistro")) $("agregarRegistro").onclick = function() {
+    var r=readRegistroFromUI();
+    if(!r.ok) return toast("⚠️ "+r.msg);
+    db.unshift(r.data);
+    saveDB();
+    updateHeaderAuditStats();
+    clearRegistroUI();
+    toast("✅ Registro agregado.");
+  };
+  if($("limpiarRegistro")) $("limpiarRegistro").onclick = clearCaptureAll;
+
+  if($("finalizarAuditoria")) $("finalizarAuditoria").onclick = function(ev) {
+    try{ if(ev){ ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
+
+    // Permitir finalizar aunque no se haya presionado "Guardar encabezado"
+    if(!hdr || !hdr.auditId) {
+      var hh = readHeaderFromUI();
+      if(!hh.ok) return toast("⚠️ " + hh.msg);
+      hdr = hh.data;
+      try { if($("fechaRegistro")) $("fechaRegistro").value = hdr.fechaRegistro; } catch(e){}
+      try { if($("horaRegistro")) $("horaRegistro").value = hdr.horaRegistro; } catch(e){}
+      saveHDR();
+    }
+
+    // Si hay un registro capturado en pantalla y aún no se agregó a la base,
+    // lo agregamos automáticamente para que el IAS se calcule incluso con 1 registro.
+    var draftNombre = $("nombre") ? ($("nombre").value||"").trim() : "";
+    var draftActo   = $("acto") ? ($("acto").value||"").trim() : "";
+    var draftObs    = $("obsAdicional") ? ($("obsAdicional").value||"").trim() : "";
+    var hasDraft = !!(draftNombre || draftActo || draftObs || reconFramedDataUrl);
+
+    if(hasDraft) {
+      var rr = readRegistroFromUI();
+      if(!rr.ok) return toast("⚠️ No se puede finalizar: " + rr.msg);
+      db.unshift(rr.data);
+      saveDB();
+      clearRegistroUI();
+    }
+
+    var rows = getRowsByAuditId(hdr.auditId);
+    if(!rows || rows.length===0) return toast("⚠️ No hay registros para esta auditoría.");
+    var ias = computeIAS(rows);
+
+    // Guardar IAS en el encabezado para que quede visible en "Encabezado de auditoría"
+    try { hdr.iasPct = Number(ias.toFixed(2)); saveHDR(); } catch(e){}
+    updateHeaderAuditStats();
+
+    // Exportar primero (si el dashboard o la tabla tienen un error, NO debe bloquear la exportación)
+    toast("✅ IAS: <b>"+ias.toFixed(1)+"%</b> ("+rows.length+" registros). Exportando JSON…");
+    exportCurrentAuditJson(true);
+
+    // refrescar vistas (protegido)
+    try { renderTable(); } catch(e) {}
+    try { renderDashboard(); } catch(e) {}
+  };
+
+
+
+
+  if($("aplicarFiltros")) $("aplicarFiltros").onclick = function() { renderTable(); renderDashboard(); };
+  if($("limpiarFiltros")) $("limpiarFiltros").onclick = function() {
+    var ids=["fPlanta","fArea","fAreaPersona","fAuditor","fTipo","fTipoObs","fDesde","fHasta","fQ"];
+    for(var i=0;i<ids.length;i++) if($(ids[i])) $(ids[i]).value="";
+    renderTable(); renderDashboard();
+  };
+
+  if($("applyDashFilters")) $("applyDashFilters").onclick = function() { renderDashboard(); toast("✅ Dashboard actualizado."); };
+  if($("applyAudVsAud")) $("applyAudVsAud").onclick = function() { compareAuditorVsAuditor(); };
+
+  // Start on captura
+  if($("exportXlsx")) $("exportXlsx").onclick = exportRegistrosXlsx;
+  if($("exportJson")) $("exportJson").onclick = exportRegistrosJson;
+  if($("exportAuditPdf")) $("exportAuditPdf").onclick = exportSelectedAuditPdf;
+
+  wireCatalogEditorButtons();
+  
+
+  // Controles de IAS por planta (dashboard)
+  function syncIasPeriodUi(){
+    var mode = $("iasPeriodMode") ? $("iasPeriodMode").value : "month";
+    if($("wrapIasWeek")) $("wrapIasWeek").classList.toggle("hide", mode!=="week");
+    if($("wrapIasMonth")) $("wrapIasMonth").classList.toggle("hide", mode!=="month");
+  }
+  // Defaults
+  try {
+    var d0=new Date();
+    if($("iasMonth") && !$("iasMonth").value) $("iasMonth").value = d0.getFullYear()+"-"+pad2(d0.getMonth()+1);
+    if($("iasWeek") && !$("iasWeek").value) $("iasWeek").value = isoWeekValueFromDate(d0);
+  } catch(e){}
+  syncIasPeriodUi();
+
+  var ids = ["iasPeriodMode","iasWeek","iasMonth","iasAggMode"]; 
+  for(var ii=0; ii<ids.length; ii++) {
+    if($(ids[ii])) $(ids[ii]).addEventListener("change", function(){ syncIasPeriodUi(); renderDashboard(); });
+  }
+  if($("btnIasRefresh")) $("btnIasRefresh").addEventListener("click", function(){ syncIasPeriodUi(); renderDashboard(); toast("✅ IAS por planta actualizado."); });
+
+  // Persistir selección de auditoría PDF
+  if($("pdfAuditSelect") && !$("pdfAuditSelect")._wiredSel) {
+    $("pdfAuditSelect")._wiredSel = true;
+    $("pdfAuditSelect").addEventListener("change", function(){
+      try { localStorage.setItem("PDF_AUDIT_SEL", this.value||""); } catch(e){}
+    });
+  }
+showTab("captura");
+}
+
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", boot);
+else boot();
+
+</script>
+</body>
+</html>
